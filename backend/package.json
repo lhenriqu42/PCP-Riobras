@@ -16,5 +16,11 @@
     "url": "https://github.com/LucasCardoso255/PCP-Riobras/issues"
   },
   "homepage": "https://github.com/LucasCardoso255/PCP-Riobras#readme",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "googleapis": "^150.0.1"
+  }
 }
