@@ -4,12 +4,12 @@ import {
   Box, Typography, Button, Paper, TextField, Grid, Divider
 } from '@mui/material';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
+// import { useAuth } from '../context/AuthContext'; // Não é mais necessário para o botão de sair aqui
 
 function ApontamentosInjetoraHoraria() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  // const { logout } = useAuth(); // Não é mais necessário para o botão de sair aqui
 
   // Recebe os dados iniciais da fase anterior
   const initialData = location.state?.initialData;
@@ -60,10 +60,7 @@ function ApontamentosInjetoraHoraria() {
     setHourlyApontamentos(newApontamentos);
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  // Removido handleLogout, pois o botão "Sair" agora está no AppNavbar.
 
   const handleSubmitAll = async (event) => {
     event.preventDefault();
@@ -113,20 +110,10 @@ function ApontamentosInjetoraHoraria() {
   }
 
   return (
-    <Box sx={{ padding: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" component="h1">
-          Apontamento de Injetora (Horário)
-        </Typography>
-        <Button
-          variant="outlined"
-          color="secondary"
-          onClick={handleLogout}
-          size="large"
-        >
-          Sair
-        </Button>
-      </Box>
+    <Box> {/* Removido padding: 4 e estilizações de tela cheia */}
+      <Typography variant="h4" component="h1" gutterBottom>
+        Apontamento de Injetora (Horário)
+      </Typography>
 
       <Paper elevation={3} sx={{ padding: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <Typography variant="h6" gutterBottom>Dados do Turno:</Typography>

@@ -15,7 +15,7 @@ function Login() {
     setError('');
     const result = await login(username, password);
     if (result.success) {
-      navigate('/apontamentos/injetora');
+      navigate('/dashboard/injetora'); // Redireciona para o Dashboard Injetora após o login
     } else {
       setError(result.message);
     }
@@ -28,11 +28,11 @@ function Login() {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        backgroundColor: 'background.default', 
+        backgroundColor: 'background.default',
       }}
     >
       <Paper elevation={6} sx={{ padding: 4, display: 'flex', flexDirection: 'column', gap: 2, width: 320, maxWidth: '90%', borderRadius: 2 }}>
-        <Typography variant="h5" component="h1" align="center" gutterBottom color="primary"> {/* Usa a cor primária do tema */}
+        <Typography variant="h5" component="h1" align="center" gutterBottom color="primary">
           Login Riobras PCP
         </Typography>
         <form onSubmit={handleSubmit}>

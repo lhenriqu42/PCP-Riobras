@@ -81,7 +81,6 @@ app.post('/login', async (req, res) => {
 });
 
 
-// Rota para buscar as listas de dados (funcionarios, pecas, maquinas) do SUPABASE
 app.get('/api/data/lists', async (req, res) => {
   try {
     const { data: funcionarios, error: funcError } = await supabase.from('funcionarios').select('nome_completo');
@@ -90,7 +89,6 @@ app.get('/api/data/lists', async (req, res) => {
     const { data: pecas, error: pecasError } = await supabase.from('pecas').select('codigo_peca, descricao_peca');
     if (pecasError) throw pecasError;
 
-    // Lembre-se que 'tipo_injetora' foi adicionado à tabela maquinas
     const { data: maquinas, error: maquinasError } = await supabase.from('maquinas').select('nome_maquina, tipo_injetora');
     if (maquinasError) throw maquinasError;
 
@@ -101,26 +99,52 @@ app.get('/api/data/lists', async (req, res) => {
   }
 });
 
-// Rota para registrar múltiplos apontamentos de injetora (da fase horária) no SUPABASE
-app.post('/api/apontamentos/injetora/batch', async (req, res) => {
-  const { apontamentos } = req.body; // Espera um array de apontamentos
-
-  if (!Array.isArray(apontamentos) || apontamentos.length === 0) {
-    return res.status(400).json({ message: 'Nenhum apontamento válido fornecido.' });
-  }
+// Rota para buscar apontamentos da injetora com filtros de data, produto, injetora e turno
+app.get('/api/apontamentos/injetora', async (req, res) => {
+  // Recebe os parâmetros de filtro via query string
+  const { startDate, endDate, peca, tipoInjetora, turno } = req.query;
 
   try {
+    let query = supabase.from('apontamentos_injetora').select('*'); // Seleciona todas as colunas
 
-    const { data, error } = await supabase.from('apontamentos_injetora').insert(apontamentos);
-
-    if (error) {
-      console.error('Erro ao inserir apontamentos batch no Supabase:', error.message);
-      return res.status(500).json({ message: 'Erro ao registrar apontamentos.', error: error.message });
+    // Aplica filtro de data se startDate e endDate forem fornecidos
+    if (startDate && endDate) {
+      query = query.gte('data_apontamento', startDate).lte('data_apontamento', endDate);
     }
 
-    res.status(200).json({ message: 'Apontamentos registrados com sucesso!', data });
+    // Aplica filtro por peça (produto)
+    if (peca) {
+      query = query.eq('peca', peca);
+    }
+
+    // Aplica filtro por tipo de injetora
+    if (tipoInjetora) {
+      query = query.eq('tipo_injetora', tipoInjetora);
+    }
+
+    // Aplica filtro por turno
+    if (turno) {
+      query = query.eq('turno', turno);
+    }
+
+    // Ordena os resultados para melhor visualização
+    query = query
+      .order('data_apontamento', { ascending: true })
+      .order('hora_apontamento', { ascending: true });
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Erro ao buscar apontamentos da injetora no Supabase:', error);
+      return res.status(500).json({
+        message: 'Erro ao buscar apontamentos para o relatório.',
+        details: error.message || error.details || error.hint || error.code || 'Detalhes do erro desconhecidos.',
+      });
+    }
+
+    res.status(200).json(data);
   } catch (error) {
-    console.error('Erro geral no registro de apontamentos batch:', error.message);
+    console.error('Erro geral ao buscar apontamentos para o relatório:', error.message);
     res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
   }
 });
