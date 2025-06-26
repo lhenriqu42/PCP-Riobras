@@ -15,7 +15,7 @@ function Login() {
     setError('');
     const result = await login(username, password);
     if (result.success) {
-      navigate('/apontamentos/injetora'); // Redireciona para a página de apontamentos
+      navigate('/apontamentos/injetora');
     } else {
       setError(result.message);
     }
@@ -28,11 +28,11 @@ function Login() {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        backgroundColor: '#f0f2f5',
+        backgroundColor: 'background.default', 
       }}
     >
-      <Paper elevation={3} sx={{ padding: 4, display: 'flex', flexDirection: 'column', gap: 2, width: 300 }}>
-        <Typography variant="h5" component="h1" align="center" gutterBottom>
+      <Paper elevation={6} sx={{ padding: 4, display: 'flex', flexDirection: 'column', gap: 2, width: 320, maxWidth: '90%', borderRadius: 2 }}>
+        <Typography variant="h5" component="h1" align="center" gutterBottom color="primary"> {/* Usa a cor primária do tema */}
           Login Riobras PCP
         </Typography>
         <form onSubmit={handleSubmit}>
@@ -44,6 +44,7 @@ function Login() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
+            autoComplete="username"
           />
           <TextField
             label="Senha"
@@ -54,6 +55,7 @@ function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            autoComplete="current-password"
           />
           {error && (
             <Typography color="error" variant="body2" sx={{ mt: 1 }}>
@@ -65,7 +67,8 @@ function Login() {
             variant="contained"
             color="primary"
             fullWidth
-            sx={{ mt: 2 }}
+            size="large"
+            sx={{ mt: 3 }}
           >
             Entrar
           </Button>

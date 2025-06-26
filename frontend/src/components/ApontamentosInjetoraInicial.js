@@ -3,38 +3,31 @@ import {
   TextField, Button, Box, Typography, Paper, MenuItem, Select, FormControl, InputLabel, Grid
 } from '@mui/material';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; // Para o logout
-import { useNavigate } from 'react-router-dom'; // Para redirecionar no logout
 
-function ApontamentosInjetora() {
-  const { logout } = useAuth();
+function ApontamentosInjetoraInicial() {
   const navigate = useNavigate();
+  const { logout } = useAuth(); // Para o botão de sair
 
   const [formData, setFormData] = useState({
     tipoInjetora: '',
     dataApontamento: new Date().toISOString().split('T')[0], // Data atual no formato YYYY-MM-DD
-    horaApontamento: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }), // Hora atual HH:MM:SS
     turno: '',
     maquina: '',
     funcionario: '',
     peca: '',
-    quantidadeInjetada: '',
-    pecasNc: '',
-    observacoes: ''
   });
 
   const [listas, setListas] = useState({
     funcionarios: [],
     pecas: [],
     maquinas: [],
-    etapasProducao: []
   });
 
   const [loading, setLoading] = useState(true);
-  const [submitMessage, setSubmitMessage] = useState('');
   const [submitError, setSubmitError] = useState('');
 
-  // Função para buscar as listas do backend
   useEffect(() => {
     const fetchLists = async () => {
       try {
@@ -42,7 +35,7 @@ function ApontamentosInjetora() {
         setListas(response.data);
       } catch (error) {
         console.error('Erro ao buscar listas:', error);
-        setSubmitError('Erro ao carregar dados para os campos.');
+        setSubmitError('Erro ao carregar dados para os campos. Verifique o backend e o banco de dados.');
       } finally {
         setLoading(false);
       }
@@ -60,32 +53,25 @@ function ApontamentosInjetora() {
     navigate('/login');
   };
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = (event) => {
     event.preventDefault();
-    setSubmitMessage('');
     setSubmitError('');
 
-    try {
-      const response = await axios.post('http://localhost:3001/api/apontamentos/injetora', formData);
-      if (response.status === 200) {
-        setSubmitMessage('Apontamento registrado com sucesso!');
-        // Opcional: Limpar formulário após o sucesso
-        setFormData({
-          ...formData, // Mantém data/hora/turno talvez
-          maquina: '', funcionario: '', peca: '', quantidadeInjetada: '', pecasNc: '', observacoes: ''
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao registrar apontamento:', error);
-      setSubmitError(error.response?.data?.message || 'Erro ao registrar apontamento.');
+    // Verificar se todos os campos obrigatórios estão preenchidos
+    const { tipoInjetora, dataApontamento, turno, maquina, funcionario, peca } = formData;
+    if (!tipoInjetora || !dataApontamento || !turno || !maquina || !funcionario || !peca) {
+      setSubmitError('Por favor, preencha todos os campos obrigatórios.');
+      return;
     }
+
+    // Navega para a próxima fase, passando os dados do formulário via state
+    navigate('/apontamentos/injetora/horaria', { state: { initialData: formData } });
   };
 
   if (loading) {
-    return <Typography>Carregando formulário...</Typography>;
+    return <Typography sx={{ textAlign: 'center', mt: 4 }}>Carregando formulário...</Typography>;
   }
 
-  // Filtrar máquinas por tipo de injetora selecionado
   const maquinasFiltradas = formData.tipoInjetora
     ? listas.maquinas.filter(m => m.tipo_injetora === formData.tipoInjetora)
     : listas.maquinas;
@@ -94,9 +80,14 @@ function ApontamentosInjetora() {
     <Box sx={{ padding: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Typography variant="h4" component="h1">
-          Apontamento de Injetora
+          Apontamento de Injetora (Dados Iniciais)
         </Typography>
-        <Button variant="outlined" color="secondary" onClick={handleLogout}>
+        <Button
+          variant="outlined"
+          color="secondary"
+          onClick={handleLogout}
+          size="large"
+        >
           Sair
         </Button>
       </Box>
@@ -132,7 +123,7 @@ function ApontamentosInjetora() {
                   value={formData.maquina}
                   label="Máquina"
                   onChange={handleChange}
-                  disabled={!formData.tipoInjetora} // Desabilita se tipo não for selecionado
+                  disabled={!formData.tipoInjetora}
                 >
                   <MenuItem value=""><em>Nenhum</em></MenuItem>
                   {maquinasFiltradas.map((maq) => (
@@ -144,25 +135,13 @@ function ApontamentosInjetora() {
               </FormControl>
             </Grid>
 
-            {/* Data e Hora */}
+            {/* Data do Apontamento */}
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Data do Apontamento"
                 type="date"
                 name="dataApontamento"
                 value={formData.dataApontamento}
-                onChange={handleChange}
-                fullWidth
-                required
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Hora do Apontamento"
-                type="time"
-                name="horaApontamento"
-                value={formData.horaApontamento}
                 onChange={handleChange}
                 fullWidth
                 required
@@ -199,8 +178,8 @@ function ApontamentosInjetora() {
                 >
                   <MenuItem value=""><em>Nenhum</em></MenuItem>
                   {listas.funcionarios.map((func) => (
-                    <MenuItem key={func} value={func}>
-                      {func}
+                    <MenuItem key={func.nome_completo} value={func.nome_completo}>
+                      {func.nome_completo}
                     </MenuItem>
                   ))}
                 </Select>
@@ -226,53 +205,8 @@ function ApontamentosInjetora() {
                 </Select>
               </FormControl>
             </Grid>
-
-            {/* Quantidade Injetada */}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Quantidade Injetada"
-                type="number"
-                name="quantidadeInjetada"
-                value={formData.quantidadeInjetada}
-                onChange={handleChange}
-                fullWidth
-                required
-                InputProps={{ inputProps: { min: 0 } }}
-              />
-            </Grid>
-
-            {/* Peças Não Conformes (NC) */}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Peças Não Conformes (NC)"
-                type="number"
-                name="pecasNc"
-                value={formData.pecasNc}
-                onChange={handleChange}
-                fullWidth
-                InputProps={{ inputProps: { min: 0 } }}
-              />
-            </Grid>
-
-            {/* Observações */}
-            <Grid item xs={12}>
-              <TextField
-                label="Observações"
-                name="observacoes"
-                value={formData.observacoes}
-                onChange={handleChange}
-                fullWidth
-                multiline
-                rows={3}
-              />
-            </Grid>
           </Grid>
 
-          {submitMessage && (
-            <Typography color="primary" sx={{ mt: 2 }}>
-              {submitMessage}
-            </Typography>
-          )}
           {submitError && (
             <Typography color="error" sx={{ mt: 2 }}>
               {submitError}
@@ -284,8 +218,9 @@ function ApontamentosInjetora() {
             variant="contained"
             color="primary"
             sx={{ mt: 3 }}
+            size="large"
           >
-            Registrar Apontamento
+            Prosseguir para Apontamentos Horários
           </Button>
         </form>
       </Paper>
@@ -293,4 +228,4 @@ function ApontamentosInjetora() {
   );
 }
 
-export default ApontamentosInjetora;
+export default ApontamentosInjetoraInicial;
