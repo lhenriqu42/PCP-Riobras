@@ -5,52 +5,44 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 const app = express();
-const port = 3001; // Porta do backend
+const port = 3001;
 
-// Configuração do CORS para permitir requisições do frontend
 app.use(cors({
-  origin: 'http://localhost:3000', // Altere para a URL do seu frontend em produção
+  origin: 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-app.use(express.json()); // Para parsear o corpo das requisições JSON. ESTA LINHA DEVE VIR ANTES DAS ROTAS QUE USAM REQ.BODY
+app.use(express.json());
 
-// ======================================================
-// CONFIGURAÇÃO GOOGLE SHEETS (PARA LOGIN)
-// ======================================================
+// Configuração Google Sheets para Login
 const auth = new google.auth.GoogleAuth({
   credentials: {
     client_email: process.env.GOOGLE_CLIENT_EMAIL,
-    private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'), 
+    private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
   },
-  scopes: ['https://www.googleapis.com/auth/spreadsheets'], 
+  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
-
 const sheets = google.sheets({ version: 'v4', auth });
-const spreadsheetId = process.env.GOOGLE_SHEET_ID; 
+const spreadsheetId = process.env.GOOGLE_SHEET_ID;
 
-// ======================================================
-// CONFIGURAÇÃO SUPABASE (PARA DADOS DA APLICAÇÃO)
-// ======================================================
+// Configuração Supabase para Dados da Aplicação
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+// Chave de serviço Supabase (para operações seguras no backend)
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("ERRO: Variáveis de ambiente SUPABASE_URL ou SUPABASE_ANON_KEY não definidas.");
-  process.exit(1); 
+if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
+  console.error("ERRO: Variáveis de ambiente Supabase não definidas (URL, ANON_KEY, SERVICE_ROLE_KEY).");
+  process.exit(1);
 }
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-// ======================================================
-// ROTAS DA APLICAÇÃO
-// ======================================================
-
-// Rota de Login (USANDO GOOGLE SHEETS)
+// Rota de Login
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
-    const loginRange = 'USUARIOS!A:B'; 
+    const loginRange = 'USUARIOS!A:B';
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -62,7 +54,7 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Nenhum usuário encontrado na planilha de login.' });
     }
 
-    const foundUser = users.slice(1).find( 
+    const foundUser = users.slice(1).find(
       (row) => row[0] === username && row[1] === password
     );
 
@@ -77,7 +69,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Rota para buscar listas de dados (funcionários, peças, máquinas)
+// Rota para buscar listas de dados
 app.get('/api/data/lists', async (req, res) => {
   try {
     const { data: funcionarios, error: funcError } = await supabase.from('funcionarios').select('nome_completo');
@@ -91,12 +83,12 @@ app.get('/api/data/lists', async (req, res) => {
 
     res.status(200).json({ funcionarios, pecas, maquinas });
   } catch (error) {
-    console.error('Erro ao buscar listas do banco de dados (Supabase):', error.message);
+    console.error('Erro ao buscar listas do Supabase:', error.message);
     res.status(500).json({ message: 'Erro ao buscar listas de dados do Supabase.', error: error.message });
   }
 });
 
-// Rota para INSERIR um novo apontamento de injetora (MÉTODO POST)
+// Rota para inserir novo apontamento
 app.post('/api/apontamentos/injetora', async (req, res) => {
   const {
     tipoInjetora,
@@ -109,15 +101,15 @@ app.post('/api/apontamentos/injetora', async (req, res) => {
     quantidade_injetada,
     pecas_nc,
     observacoes,
-    tipo_registro 
+    tipo_registro
   } = req.body;
 
-  // Adicionado logs para depuração
-  console.log("Recebendo payload para apontamento:", req.body); 
-  console.log("Tentando inserir no Supabase..."); 
+  // Cálculo da quantidade efetiva
+  const quantidade_efetiva = quantidade_injetada - pecas_nc;
 
   try {
-    const { data, error } = await supabase
+    // Inserir com chave de serviço (supabaseAdmin)
+    const { data, error } = await supabaseAdmin
       .from('apontamentos_injetora')
       .insert([
         {
@@ -131,27 +123,28 @@ app.post('/api/apontamentos/injetora', async (req, res) => {
           quantidade_injetada: quantidade_injetada,
           pecas_nc: pecas_nc,
           observacoes: observacoes,
-          tipo_registro: tipo_registro 
+          tipo_registro: tipo_registro,
+          quantidade_efetiva // Nova coluna
         }
       ])
-      .select(); 
+      .select();
 
     if (error) {
-      console.error('ERRO DETALHADO SUPABASE AO INSERIR:', error); // Melhor log de erro
+      console.error('Erro Supabase ao inserir:', error);
       return res.status(500).json({
-        message: 'Erro ao inserir apontamento da injetora.',
-        details: error.message || error.details || error.hint || error.code || 'Detalhes do erro desconhecidos.',
+        message: 'Erro ao inserir apontamento.',
+        details: error.message || error.details || error.hint || error.code || 'Detalhes desconhecidos.',
       });
     }
 
-    res.status(201).json(data[0]); 
+    res.status(201).json(data[0]);
   } catch (error) {
-    console.error('Erro GERAL ao inserir apontamento da injetora:', error.message);
+    console.error('Erro geral ao inserir apontamento:', error.message);
     res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
   }
 });
 
-// Rota para BUSCAR apontamentos da injetora com filtros (MÉTODO GET)
+// Rota para buscar apontamentos com filtros
 app.get('/api/apontamentos/injetora', async (req, res) => {
   const { dataInicio, dataFim, peca, tipoInjetora, turno } = req.query;
 
@@ -161,15 +154,12 @@ app.get('/api/apontamentos/injetora', async (req, res) => {
     if (dataInicio && dataFim) {
       query = query.gte('data_apontamento', dataInicio).lte('data_apontamento', dataFim);
     }
-
     if (peca) {
       query = query.eq('peca', peca);
     }
-
     if (tipoInjetora) {
       query = query.eq('tipo_injetora', tipoInjetora);
     }
-
     if (turno) {
       query = query.eq('turno', turno);
     }
@@ -181,20 +171,19 @@ app.get('/api/apontamentos/injetora', async (req, res) => {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Erro ao buscar apontamentos da injetora no Supabase:', error);
+      console.error('Erro Supabase ao buscar apontamentos:', error);
       return res.status(500).json({
         message: 'Erro ao buscar apontamentos para o relatório.',
-        details: error.message || error.details || error.hint || error.code || 'Detalhes do erro desconhecidos.',
+        details: error.message || error.details || error.hint || error.code || 'Detalhes desconhecidos.',
       });
     }
 
     res.status(200).json(data);
   } catch (error) {
-    console.error('Erro geral ao buscar apontamentos para o relatório:', error.message);
+    console.error('Erro geral ao buscar apontamentos:', error.message);
     res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
   }
 });
-
 
 app.listen(port, () => {
   console.log(`Backend rodando em http://localhost:${port}`);
