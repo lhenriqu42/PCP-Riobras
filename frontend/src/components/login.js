@@ -1,34 +1,35 @@
 import React, { useState } from 'react';
 import { Box, TextField, Button, Typography, Paper, Alert } from '@mui/material';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // Importe o useAuth do seu AuthContext
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth(); // Use a função login do AuthContext
 
   const handleLogin = async () => {
     try {
-      // Limpa qualquer erro anterior
-      setError(''); 
+      setError(''); // Limpa qualquer erro anterior
 
-      const response = await axios.post('http://localhost:3001/login', { username, password });
-      
-      // Se o login for bem-sucedido, salva o username e redireciona
-      if (response.status === 200) {
-        localStorage.setItem('loggedInUser', username); // Salva o username no localStorage
-        navigate('/home'); 
+      // Chame a função login do AuthContext
+      const result = await login(username, password);
+
+      if (result.success) {
+        navigate('/home');
+      } else {
+        // Se o login falhou, exibe a mensagem de erro retornada pelo AuthContext
+        setError(result.message || 'Erro ao tentar fazer login. Verifique suas credenciais.');
       }
     } catch (err) {
-      console.error('Erro de login:', err);
-      // Mensagem de erro mais amigável
-      setError(err.response?.data?.message || 'Erro ao tentar fazer login. Verifique suas credenciais.');
+      // Este catch pegaria erros que não foram tratados pelo AuthContext, como rede.
+      console.error('Erro inesperado no componente de login:', err);
+      setError('Ocorreu um erro inesperado. Tente novamente mais tarde.');
     }
   };
 
-  // Função para lidar com o pressionar de tecla
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleLogin();
@@ -57,7 +58,7 @@ export default function Login() {
           margin="normal"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          onKeyPress={handleKeyPress} // Adicionado onKeyPress
+          onKeyPress={handleKeyPress}
         />
         <TextField
           label="Senha"
@@ -67,7 +68,7 @@ export default function Login() {
           margin="normal"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          onKeyPress={handleKeyPress} // Adicionado onKeyPress
+          onKeyPress={handleKeyPress}
         />
         <Button
           variant="contained"

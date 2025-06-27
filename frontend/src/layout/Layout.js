@@ -1,94 +1,119 @@
-import React, { useState, useEffect } from 'react';
-import { AppBar, Toolbar, Typography, Button, Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import ReceiptIcon from '@mui/icons-material/Receipt';
-import HomeIcon from '@mui/icons-material/Home';
+import React, { useState } from 'react';
+import {
+  Box,
+  Toolbar,
+  Drawer,
+  IconButton,
+  AppBar,
+  Typography,
+  Button
+} from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import { useNavigate, Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
+import SideMenu from './SideMenu';
+import { useAuth } from '../context/AuthContext';
+
+const drawerWidth = 240;
 
 export default function Layout() {
   const navigate = useNavigate();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [loggedInUser, setLoggedInUser] = useState('');
+  const { logout, user } = useAuth();
 
-  useEffect(() => {
-    const user = localStorage.getItem('loggedInUser');
-    if (user) {
-      setLoggedInUser(user);
-    }
-  }, []);
+  // Estado para controlar a abertura/fechamento do Drawer em dispositivos móveis
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Função para alternar o estado do Drawer
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
 
   const handleLogout = () => {
-    localStorage.removeItem('loggedInUser'); // Remove o usuário do localStorage
-    navigate('/'); // CORREÇÃO AQUI: Redireciona para a tela de login (rota '/')
+    logout();
+    navigate('/login');
   };
-
-  const toggleDrawer = (open) => (event) => {
-    if (event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) {
-      return;
-    }
-    setDrawerOpen(open);
-  };
-
-  const menuItems = [
-    { text: 'Dashboard Injetora', icon: <DashboardIcon />, path: '/dashboard/injetora' },
-    { text: 'Apontamento Injetora', icon: <ReceiptIcon />, path: '/apontamentos/injetora/inicial' },
-    { text: 'Página Inicial', icon: <HomeIcon />, path: '/home' },
-  ];
-
-  const drawerList = (
-    <Box
-      sx={{ width: 250 }}
-      role="presentation"
-      onClick={toggleDrawer(false)}
-      onKeyDown={toggleDrawer(false)}
-    >
-      <List>
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton onClick={() => navigate(item.path)}>
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
-    </Box>
-  );
 
   return (
     <Box sx={{ display: 'flex' }}>
-      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+      {/* AppBar (barra superior) */}
+      <AppBar
+        position="fixed"
+        sx={{
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          ml: { sm: `${drawerWidth}px` },
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
+      >
         <Toolbar>
-          <Button
-            size="large"
-            edge="start"
+          <IconButton
             color="inherit"
-            aria-label="menu"
-            sx={{ mr: 2 }}
-            onClick={toggleDrawer(true)}
+            aria-label="open drawer"
+            edge="start"
+            onClick={handleDrawerToggle} // Chama handleDrawerToggle para abrir
+            sx={{ mr: 2, display: { sm: 'none' } }}
           >
             <MenuIcon />
-          </Button>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Riobravas Produção
+          </IconButton>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+            Riobras Produção
           </Typography>
-          <Typography variant="body1" sx={{ mr: 2 }}>
-            Olá, {loggedInUser || 'Usuário'}!
-          </Typography>
-          <Button color="inherit" onClick={handleLogout}>
-            Sair
-          </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body1">
+              Olá, {user?.email || 'Usuário'}
+            </Typography>
+            <Button color="inherit" onClick={handleLogout}>
+              Sair
+            </Button>
+          </Box>
         </Toolbar>
       </AppBar>
-      <Drawer
-        anchor="left"
-        open={drawerOpen}
-        onClose={toggleDrawer(false)}
+
+      {/* SideMenu (menu lateral) */}
+      <Box
+        component="nav"
+        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        aria-label="mailbox folders"
       >
-        {drawerList}
-      </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8 }}>
+        {/* Drawer para mobile (temporário) */}
+        <Drawer
+          variant="temporary"
+          open={mobileOpen} // Controla a abertura do Drawer
+          onClose={handleDrawerToggle} // Fecha o Drawer ao clicar fora
+          ModalProps={{
+            keepMounted: true, // Melhor performance em mobile
+          }}
+          sx={{
+            display: { xs: 'block', sm: 'none' },
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+          }}
+        >
+          {/* Conteúdo do SideMenu */}
+          {/* O SideMenu precisa ser envolvido por algo que forneça a Toolbar para espaçamento correto */}
+          <div>
+            <Toolbar /> {/* Adiciona a Toolbar para empurrar o conteúdo para baixo da AppBar */}
+            <SideMenu />
+          </div>
+        </Drawer>
+        {/* Drawer para desktop (permanente) */}
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: 'none', sm: 'block' },
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+          }}
+          open // Sempre aberto no desktop
+        >
+          {/* Conteúdo do SideMenu */}
+          <div>
+            <Toolbar /> {/* Adiciona a Toolbar para empurrar o conteúdo para baixo da AppBar */}
+            <SideMenu />
+          </div>
+        </Drawer>
+      </Box>
+
+      <Box
+        component="main"
+        sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` }, mt: '64px' }}
+      >
         <Outlet />
       </Box>
     </Box>
