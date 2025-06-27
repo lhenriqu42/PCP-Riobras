@@ -13,7 +13,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-app.use(express.json()); // Para parsear o corpo das requisições JSON
+app.use(express.json()); // Para parsear o corpo das requisições JSON. ESTA LINHA DEVE VIR ANTES DAS ROTAS QUE USAM REQ.BODY
 
 // ======================================================
 // CONFIGURAÇÃO GOOGLE SHEETS (PARA LOGIN)
@@ -50,9 +50,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
-    // ESTE É O RANGE PARA BUSCAR USUÁRIOS E SENHAS PARA LOGIN
-    // Certifique-se que a aba "USUARIOS" existe na sua planilha e que username/password estão em A e B
-    const loginRange = 'USUARIOS!A:B'; // Exemplo: Aba "USUARIOS", colunas A (username) e B (password)
+    const loginRange = 'USUARIOS!A:B'; 
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -64,8 +62,7 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Nenhum usuário encontrado na planilha de login.' });
     }
 
-    // Procura pelo usuário nas linhas da planilha (ignora a primeira linha se for cabeçalho)
-    const foundUser = users.slice(1).find( // .slice(1) para pular a linha de cabeçalho, se houver
+    const foundUser = users.slice(1).find( 
       (row) => row[0] === username && row[1] === password
     );
 
@@ -80,7 +77,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-
+// Rota para buscar listas de dados (funcionários, peças, máquinas)
 app.get('/api/data/lists', async (req, res) => {
   try {
     const { data: funcionarios, error: funcError } = await supabase.from('funcionarios').select('nome_completo');
@@ -99,35 +96,84 @@ app.get('/api/data/lists', async (req, res) => {
   }
 });
 
-// Rota para buscar apontamentos da injetora com filtros de data, produto, injetora e turno
-app.get('/api/apontamentos/injetora', async (req, res) => {
-  // Recebe os parâmetros de filtro via query string
-  const { startDate, endDate, peca, tipoInjetora, turno } = req.query;
+// Rota para INSERIR um novo apontamento de injetora (MÉTODO POST)
+app.post('/api/apontamentos/injetora', async (req, res) => {
+  const {
+    tipoInjetora,
+    dataApontamento,
+    horaApontamento,
+    turno,
+    maquina,
+    funcionario,
+    peca,
+    quantidade_injetada,
+    pecas_nc,
+    observacoes,
+    tipo_registro 
+  } = req.body;
+
+  // Adicionado logs para depuração
+  console.log("Recebendo payload para apontamento:", req.body); 
+  console.log("Tentando inserir no Supabase..."); 
 
   try {
-    let query = supabase.from('apontamentos_injetora').select('*'); // Seleciona todas as colunas
+    const { data, error } = await supabase
+      .from('apontamentos_injetora')
+      .insert([
+        {
+          tipo_injetora: tipoInjetora,
+          data_apontamento: dataApontamento,
+          hora_apontamento: horaApontamento,
+          turno: turno,
+          maquina: maquina,
+          funcionario: funcionario,
+          peca: peca,
+          quantidade_injetada: quantidade_injetada,
+          pecas_nc: pecas_nc,
+          observacoes: observacoes,
+          tipo_registro: tipo_registro 
+        }
+      ])
+      .select(); 
 
-    // Aplica filtro de data se startDate e endDate forem fornecidos
-    if (startDate && endDate) {
-      query = query.gte('data_apontamento', startDate).lte('data_apontamento', endDate);
+    if (error) {
+      console.error('ERRO DETALHADO SUPABASE AO INSERIR:', error); // Melhor log de erro
+      return res.status(500).json({
+        message: 'Erro ao inserir apontamento da injetora.',
+        details: error.message || error.details || error.hint || error.code || 'Detalhes do erro desconhecidos.',
+      });
     }
 
-    // Aplica filtro por peça (produto)
+    res.status(201).json(data[0]); 
+  } catch (error) {
+    console.error('Erro GERAL ao inserir apontamento da injetora:', error.message);
+    res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
+  }
+});
+
+// Rota para BUSCAR apontamentos da injetora com filtros (MÉTODO GET)
+app.get('/api/apontamentos/injetora', async (req, res) => {
+  const { dataInicio, dataFim, peca, tipoInjetora, turno } = req.query;
+
+  try {
+    let query = supabase.from('apontamentos_injetora').select('*');
+
+    if (dataInicio && dataFim) {
+      query = query.gte('data_apontamento', dataInicio).lte('data_apontamento', dataFim);
+    }
+
     if (peca) {
       query = query.eq('peca', peca);
     }
 
-    // Aplica filtro por tipo de injetora
     if (tipoInjetora) {
       query = query.eq('tipo_injetora', tipoInjetora);
     }
 
-    // Aplica filtro por turno
     if (turno) {
       query = query.eq('turno', turno);
     }
 
-    // Ordena os resultados para melhor visualização
     query = query
       .order('data_apontamento', { ascending: true })
       .order('hora_apontamento', { ascending: true });

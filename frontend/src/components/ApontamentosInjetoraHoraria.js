@@ -1,234 +1,391 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react'; // Importar useRef
 import {
-  Box, Typography, Button, Paper, TextField, Grid, Divider
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Grid,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Alert,
+  Menu,
+  MenuItem,
+  Tooltip,
 } from '@mui/material';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-// import { useAuth } from '../context/AuthContext'; // Não é mais necessário para o botão de sair aqui
+import moment from 'moment';
 
-function ApontamentosInjetoraHoraria() {
-  const navigate = useNavigate();
+export default function ApontamentosInjetoraHoraria() {
   const location = useLocation();
-  // const { logout } = useAuth(); // Não é mais necessário para o botão de sair aqui
-
-  // Recebe os dados iniciais da fase anterior
+  const navigate = useNavigate();
   const initialData = location.state?.initialData;
 
-  // Se não houver dados iniciais, redireciona de volta
+  const [apontamentosHorarios, setApontamentosHorarios] = useState([]);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const [currentHourIndex, setCurrentHourIndex] = useState(0);
+
+  const [anchorEl, setAnchorEl] = useState(null);
+  const openMenu = Boolean(anchorEl);
+
+  // Ref para o campo de quantidade_injetada da linha atual
+  const inputRef = useRef(null); 
+
   useEffect(() => {
     if (!initialData) {
-      navigate('/apontamentos/injetora/inicial');
+      setError('Dados iniciais do apontamento não encontrados. Redirecionando...');
+      setTimeout(() => navigate('/apontamentos/injetora/inicial'), 3000);
+      return;
     }
+    generateHourlyEntries(initialData);
   }, [initialData, navigate]);
 
-  // Define as horas do turno com base na seleção
-  const getTurnoHours = (turno) => {
-    const hours = [];
+  useEffect(() => {
+    // Foca no primeiro campo de input da linha atual quando currentHourIndex muda
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [currentHourIndex]);
+
+  const generateHourlyEntries = (data) => {
+    const { dataApontamento, horaApontamento, turno } = data;
+    const entries = [];
+    let startHour;
+    let endHour;
+
     if (turno === 'Manha') {
-      for (let i = 7; i <= 18; i++) { // Das 7h às 18h
-        hours.push(`${String(i).padStart(2, '0')}:00`);
-      }
-    } else if (turno === 'Noite') {
-      for (let i = 18; i <= 23; i++) { // Das 18h às 23h (do dia atual)
-        hours.push(`${String(i).padStart(2, '0')}:00`);
-      }
-      for (let i = 0; i <= 5; i++) { // Das 00h às 05h (do dia seguinte)
-        hours.push(`${String(i).padStart(2, '0')}:00`);
-      }
+      startHour = moment(dataApontamento + ' 07:00', 'YYYY-MM-DD HH:mm');
+      endHour = moment(dataApontamento + ' 18:00', 'YYYY-MM-DD HH:mm');
+    } else { // Noite
+      startHour = moment(dataApontamento + ' 18:00', 'YYYY-MM-DD HH:mm');
+      endHour = moment(dataApontamento, 'YYYY-MM-DD').add(1, 'days').set({ hour: 7, minute: 0 });
     }
-    return hours;
+
+    let current = moment(startHour);
+    while (current.isBefore(endHour)) {
+      const hora = current.format('HH:mm');
+      entries.push({
+        hora,
+        quantidade_injetada: '',
+        pecas_nc: '',
+        observacoes: '',
+        tipo_registro: 'producao',
+        finalizado: false,
+      });
+      current.add(1, 'hour');
+    }
+    setApontamentosHorarios(entries);
   };
 
-  const turnoHours = initialData ? getTurnoHours(initialData.turno) : [];
-
-  // Estado para armazenar os apontamentos horários
-  const [hourlyApontamentos, setHourlyApontamentos] = useState(() => {
-    return turnoHours.map(hour => ({
-      horaApontamento: hour,
-      quantidadeInjetada: '',
-      pecasNc: '',
-      observacoes: ''
-    }));
-  });
-
-  const [submitMessage, setSubmitMessage] = useState('');
-  const [submitError, setSubmitError] = useState('');
-
-  const handleChange = (index, field, value) => {
-    const newApontamentos = [...hourlyApontamentos];
-    newApontamentos[index][field] = value;
-    setHourlyApontamentos(newApontamentos);
+  const handleChange = (e, index) => {
+    const { name, value } = e.target;
+    const newApontamentos = [...apontamentosHorarios];
+    newApontamentos[index][name] = value;
+    setApontamentosHorarios(newApontamentos);
   };
 
-  // Removido handleLogout, pois o botão "Sair" agora está no AppNavbar.
+  const handleRegisterHour = async (index) => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
 
-  const handleSubmitAll = async (event) => {
-    event.preventDefault();
-    setSubmitMessage('');
-    setSubmitError('');
+    const currentEntry = apontamentosHorarios[index];
 
-    if (!initialData) {
-      setSubmitError('Dados iniciais não encontrados. Por favor, retorne à fase anterior.');
-      return;
+    if (currentEntry.tipo_registro === 'producao') {
+      if (currentEntry.quantidade_injetada === '' || currentEntry.pecas_nc === '') {
+        setError('Por favor, preencha Quantidade Injetada e Peças Não Conformes.');
+        setLoading(false);
+        return;
+      }
+      currentEntry.quantidade_injetada = parseFloat(currentEntry.quantidade_injetada) || 0;
+      currentEntry.pecas_nc = parseFloat(currentEntry.pecas_nc) || 0;
     }
 
-    const apontamentosParaEnviar = hourlyApontamentos
-      .filter(ap => ap.quantidadeInjetada || ap.pecasNc || ap.observacoes) // Envia apenas linhas preenchidas
-      .map(ap => ({
-        ...initialData, // Inclui os dados da fase inicial
-        horaApontamento: ap.horaApontamento,
-        quantidadeInjetada: ap.quantidadeInjetada || 0, // Garante que é número
-        pecasNc: ap.pecasNc || 0, // Garante que é número
-        observacoes: ap.observacoes,
-      }));
-
-    if (apontamentosParaEnviar.length === 0) {
-      setSubmitError('Nenhum apontamento horário preenchido para registrar.');
-      return;
-    }
+    const payload = {
+      ...initialData,
+      hora_apontamento: currentEntry.hora,
+      quantidade_injetada: currentEntry.quantidade_injetada,
+      pecas_nc: currentEntry.pecas_nc,
+      observacoes: currentEntry.observacoes,
+      tipo_registro: currentEntry.tipo_registro,
+    };
 
     try {
-      // Endpoint no backend precisará aceitar um ARRAY de apontamentos
-      const response = await axios.post('http://localhost:3001/api/apontamentos/injetora/batch', {
-        apontamentos: apontamentosParaEnviar
-      });
-      if (response.status === 200) {
-        setSubmitMessage('Apontamentos horários registrados com sucesso!');
-        // Opcional: Limpar campos após o sucesso, ou redirecionar
-        // setHourlyApontamentos(turnoHours.map(hour => ({
-        //   horaApontamento: hour, quantidadeInjetada: '', pecasNc: '', observacoes: ''
-        // })));
+      await axios.post('http://localhost:3001/api/apontamentos/injetora', payload);
+      setSuccess(`Apontamento para ${currentEntry.hora} registrado com sucesso!`);
+      const updatedApontamentos = [...apontamentosHorarios];
+      updatedApontamentos[index].finalizado = true;
+      setApontamentosHorarios(updatedApontamentos);
+
+      if (index < apontamentosHorarios.length - 1) {
+        setCurrentHourIndex(index + 1);
+      } else {
+        setSuccess('Todos os apontamentos horários foram registrados!');
+        // Opcional: Redirecionar para o dashboard ao finalizar tudo
+        // navigate('/dashboard/injetora');
       }
-    } catch (error) {
-      console.error('Erro ao registrar apontamentos horários:', error);
-      setSubmitError(error.response?.data?.message || 'Erro ao registrar apontamentos horários.');
+    } catch (err) {
+      console.error('Erro ao registrar apontamento horário:', err);
+      setError('Erro ao registrar apontamento horário. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!initialData) {
-    return null; // ou um spinner, enquanto redireciona
+  const handleClickMenu = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+  };
+
+  const handleSpecialAction = (type) => {
+    const index = currentHourIndex;
+    const newApontamentos = [...apontamentosHorarios];
+    let currentEntry = newApontamentos[index];
+
+    if (!currentEntry) {
+      setError("Não há mais horários para registrar ou um erro ocorreu.");
+      handleCloseMenu();
+      return;
+    }
+
+    currentEntry.quantidade_injetada = 0;
+    currentEntry.pecas_nc = 0;
+    currentEntry.observacoes = `Operação de ${type.toUpperCase()}`;
+    currentEntry.tipo_registro = type;
+
+    handleRegisterHour(index);
+    handleCloseMenu();
+  };
+
+  const handleEndOperation = () => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    // Primeiro, registre o apontamento atual se ele não estiver finalizado
+    if (currentHourIndex < apontamentosHorarios.length && !apontamentosHorarios[currentHourIndex].finalizado) {
+        handleRegisterHour(currentHourIndex).then(() => {
+            const updatedApontamentos = [...apontamentosHorarios];
+            for (let i = currentHourIndex + 1; i < updatedApontamentos.length; i++) {
+                updatedApontamentos[i].finalizado = true;
+                updatedApontamentos[i].tipo_registro = 'finalizado'; 
+                updatedApontamentos[i].quantidade_injetada = 0;
+                updatedApontamentos[i].pecas_nc = 0;
+                updatedApontamentos[i].observacoes = 'Operação encerrada antes do horário';
+            }
+            setApontamentosHorarios(updatedApontamentos);
+            setSuccess('Operação encerrada com sucesso! Todos os horários restantes foram marcados.');
+            setLoading(false);
+            navigate('/dashboard/injetora'); 
+        }).catch(() => {
+            setLoading(false);
+        });
+    } else {
+        const updatedApontamentos = [...apontamentosHorarios];
+        for (let i = currentHourIndex; i < updatedApontamentos.length; i++) { 
+            updatedApontamentos[i].finalizado = true;
+            updatedApontamentos[i].tipo_registro = 'finalizado';
+            updatedApontamentos[i].quantidade_injetada = 0;
+            updatedApontamentos[i].pecas_nc = 0;
+            updatedApontamentos[i].observacoes = 'Operação encerrada antes do horário';
+        }
+        setApontamentosHorarios(updatedApontamentos);
+        setSuccess('Operação encerrada com sucesso! Todos os horários restantes foram marcados.');
+        setLoading(false);
+        navigate('/dashboard/injetora');
+    }
+    handleCloseMenu();
+  };
+
+  // Função para lidar com o Enter nos campos de input da tabela
+  const handleTableKeyPress = (e, index, fieldName) => {
+    if (e.key === 'Enter' && index === currentHourIndex) {
+      if (fieldName === 'pecas_nc' || fieldName === 'quantidade_injetada') {
+        // Se for o último campo (pecas_nc) ou quantidade_injetada, tenta registrar
+        handleRegisterHour(index);
+      } else {
+        // Para outros campos (se houver), pode-se mover o foco para o próximo
+        // Ex: const nextField = e.target.form.elements[e.target.tabIndex + 1];
+        // if (nextField) nextField.focus();
+      }
+    }
+  };
+
+  if (error && !initialData) {
+    return (
+      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
+
+  if (!initialData || apontamentosHorarios.length === 0) {
+    return (
+      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+        <Typography>Carregando dados do apontamento...</Typography>
+      </Box>
+    );
   }
 
   return (
-    <Box> {/* Removido padding: 4 e estilizações de tela cheia */}
-      <Typography variant="h4" component="h1" gutterBottom>
-        Apontamento de Injetora (Horário)
+    <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        Apontamento de Injetora (Apontamentos Horários)
       </Typography>
 
-      <Paper elevation={3} sx={{ padding: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Typography variant="h6" gutterBottom>Dados do Turno:</Typography>
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6}>
+      <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
+        <Typography variant="h6" gutterBottom>
+          Dados Iniciais:
+        </Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={6} sm={3}>
             <Typography variant="body1">
               **Tipo Injetora:** {initialData.tipoInjetora}
             </Typography>
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={6} sm={3}>
             <Typography variant="body1">
               **Máquina:** {initialData.maquina}
             </Typography>
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={6} sm={3}>
             <Typography variant="body1">
               **Funcionário:** {initialData.funcionario}
             </Typography>
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={6} sm={3}>
             <Typography variant="body1">
               **Peça:** {initialData.peca}
             </Typography>
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={6} sm={3}>
             <Typography variant="body1">
               **Data:** {initialData.dataApontamento}
             </Typography>
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={6} sm={3}>
             <Typography variant="body1">
-              **Turno:** {initialData.turno} ({initialData.turno === 'Manha' ? '07:00 - 18:00' : '18:00 - 05:00'})
+              **Turno:** {initialData.turno}
             </Typography>
           </Grid>
         </Grid>
+      </Paper>
 
-        <Divider sx={{ my: 3 }} />
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-        <Typography variant="h6" gutterBottom>Registrar por Hora:</Typography>
-        <form onSubmit={handleSubmitAll}>
-          {hourlyApontamentos.map((apontamento, index) => (
-            <Paper key={index} elevation={1} sx={{ p: 2, mb: 2 }}>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item xs={12} sm={2}>
-                  <Typography variant="subtitle1" fontWeight="bold">
-                    Hora: {apontamento.horaApontamento}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    label="Quantidade Injetada"
-                    type="number"
-                    value={apontamento.quantidadeInjetada}
-                    onChange={(e) => handleChange(index, 'quantidadeInjetada', e.target.value)}
-                    fullWidth
-                    InputProps={{ inputProps: { min: 0 } }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={3}>
-                  <TextField
-                    label="Peças NC"
-                    type="number"
-                    value={apontamento.pecasNc}
-                    onChange={(e) => handleChange(index, 'pecasNc', e.target.value)}
-                    fullWidth
-                    InputProps={{ inputProps: { min: 0 } }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={3}>
-                  <TextField
-                    label="Observações"
-                    value={apontamento.observacoes}
-                    onChange={(e) => handleChange(index, 'observacoes', e.target.value)}
-                    fullWidth
-                    multiline
-                    rows={1}
-                  />
-                </Grid>
-              </Grid>
-            </Paper>
-          ))}
+      <Paper elevation={3} sx={{ p: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Registro Horário
+        </Typography>
 
-          {submitMessage && (
-            <Typography color="primary" sx={{ mt: 2 }}>
-              {submitMessage}
-            </Typography>
-          )}
-          {submitError && (
-            <Typography color="error" sx={{ mt: 2 }}>
-              {submitError}
-            </Typography>
-          )}
-
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            sx={{ mt: 3 }}
-            size="large"
-          >
-            Salvar Todos Apontamentos Horários
-          </Button>
-          <Button
-            variant="outlined"
-            color="secondary"
-            onClick={() => navigate('/apontamentos/injetora/inicial')}
-            sx={{ mt: 3, ml: 2 }}
-            size="large"
-          >
-            Voltar para Seleção Inicial
-          </Button>
-        </form>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Hora</TableCell>
+                <TableCell>Quantidade Injetada</TableCell>
+                <TableCell>Peças Não Conformes (NC)</TableCell>
+                <TableCell>Observações</TableCell>
+                <TableCell>Ações</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {apontamentosHorarios.map((entry, index) => (
+                <TableRow key={index} sx={{ backgroundColor: entry.finalizado ? '#f0f0f0' : 'inherit' }}>
+                  <TableCell>{entry.hora}</TableCell>
+                  <TableCell>
+                    <TextField
+                      name="quantidade_injetada"
+                      value={entry.quantidade_injetada}
+                      onChange={(e) => handleChange(e, index)}
+                      type="number"
+                      size="small"
+                      disabled={index !== currentHourIndex || entry.tipo_registro !== 'producao'}
+                      sx={{ width: 100 }}
+                      inputRef={index === currentHourIndex ? inputRef : null} // Define a ref para o campo da linha atual
+                      onKeyPress={(e) => handleTableKeyPress(e, index, 'quantidade_injetada')} // Adiciona onKeyPress
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <TextField
+                      name="pecas_nc"
+                      value={entry.pecas_nc}
+                      onChange={(e) => handleChange(e, index)}
+                      type="number"
+                      size="small"
+                      disabled={index !== currentHourIndex || entry.tipo_registro !== 'producao'}
+                      sx={{ width: 100 }}
+                      onKeyPress={(e) => handleTableKeyPress(e, index, 'pecas_nc')} // Adiciona onKeyPress
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <TextField
+                      name="observacoes"
+                      value={entry.observacoes}
+                      onChange={(e) => handleChange(e, index)}
+                      fullWidth
+                      size="small"
+                      disabled={index !== currentHourIndex && entry.tipo_registro !== 'producao'}
+                      onKeyPress={(e) => handleTableKeyPress(e, index, 'observacoes')} // Adiciona onKeyPress
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {index === currentHourIndex && !entry.finalizado ? (
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          variant="contained"
+                          onClick={() => handleRegisterHour(index)}
+                          disabled={loading || entry.finalizado}
+                          size="small"
+                        >
+                          Registrar
+                        </Button>
+                        <Tooltip title="Opções Especiais">
+                            <Button
+                                variant="outlined"
+                                onClick={handleClickMenu}
+                                disabled={loading}
+                                size="small"
+                                sx={{ minWidth: 35, p: '6px 8px' }}
+                            >
+                                <MoreVertIcon />
+                            </Button>
+                        </Tooltip>
+                        <Menu
+                          anchorEl={anchorEl}
+                          open={openMenu}
+                          onClose={handleCloseMenu}
+                        >
+                          <MenuItem onClick={() => handleSpecialAction('intervalo')}>Intervalo</MenuItem>
+                          <MenuItem onClick={() => handleSpecialAction('setup')}>Setup</MenuItem>
+                          <MenuItem onClick={handleEndOperation}>Encerrar Operação</MenuItem>
+                        </Menu>
+                      </Box>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        {entry.finalizado ? `Registrado (${entry.tipo_registro.toUpperCase()})` : 'Aguardando...'}
+                      </Typography>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Paper>
     </Box>
   );
 }
-
-export default ApontamentosInjetoraHoraria;
