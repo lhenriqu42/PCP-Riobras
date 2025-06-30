@@ -1,18 +1,23 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(null); // user pode conter { username, level }
 
   useEffect(() => {
-    // Verificar se há token/usuário no localStorage ao carregar a aplicação
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        setIsAuthenticated(true);
+      } catch (e) {
+        console.error("Erro ao fazer parse do usuário do localStorage", e);
+        localStorage.removeItem('user');
+      }
     }
   }, []);
 
@@ -21,8 +26,13 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.post('http://localhost:3001/login', { username, password });
       if (response.status === 200) {
         setIsAuthenticated(true);
-        setUser(response.data.user);
-        localStorage.setItem('user', JSON.stringify(response.data.user)); // Armazenar o usuário
+        // O backend agora retorna o nível do usuário
+        const userData = {
+          username: response.data.user.username,
+          level: response.data.user.level // <--- Nível de acesso do usuário
+        };
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
         return { success: true };
       }
     } catch (error) {
@@ -47,4 +57,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  return useContext(AuthContext);
+};

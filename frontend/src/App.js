@@ -24,7 +24,7 @@ function App() {
         <Router>
           <Routes>
             {/* Rota de Login */}
-            <Route path="/login" element={<Login />} />
+            <Route path="/Login" element={<Login />} />
 
             {/* Todas as rotas protegidas aninhadas dentro do Layout */}
             <Route

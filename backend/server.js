@@ -14,7 +14,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Configuração Google Sheets para Login
+// Configuração Google Sheets para Login e Níveis de Acesso
 const auth = new google.auth.GoogleAuth({
   credentials: {
     client_email: process.env.GOOGLE_CLIENT_EMAIL,
@@ -38,11 +38,47 @@ if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-// Rota de Login
+// Middleware de autenticação simples (apenas para simular um user no req)
+// No mundo real, você usaria JWT ou sessões para gerenciar autenticação
+const authenticateToken = async (req, res, next) => {
+    // Isso é uma SIMULAÇÃO para ter acesso ao usuário no req.
+    // Em produção, você teria um token JWT vindo do cliente
+    // e o decodificaria para obter o usuário.
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
+
+    if (token == null) {
+        // Se não houver token, tentamos pegar o usuário do localStorage (mock)
+        // Isso é apenas para testar localmente. Não faça isso em produção.
+        const mockUserString = req.headers['x-mock-user']; // Cabeçalho personalizado para mockar o usuário
+        if (mockUserString) {
+            try {
+                req.user = JSON.parse(mockUserString);
+            } catch (e) {
+                console.warn("Mock user header mal formatado.");
+                req.user = null;
+            }
+        } else {
+            req.user = null; // Sem usuário
+        }
+        return next();
+    }
+
+    // Para um sistema real, você decodificaria o JWT aqui:
+    // jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+    //   if (err) return res.sendStatus(403);
+    //   req.user = user;
+    //   next();
+    // });
+    next(); // Por enquanto, apenas avança para simular autenticação
+};
+
+// --- Rota de Login (Atualizada para retornar o nível de acesso) ---
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
-    const loginRange = 'USUARIOS!A:B';
+    // Assumimos que a planilha USUARIOS tem 3 colunas: [USERNAME, PASSWORD, NIVEL_ACESSO]
+    const loginRange = 'USUARIOS!A:C'; // Adicionado coluna C para NIVEL_ACESSO
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -50,16 +86,19 @@ app.post('/login', async (req, res) => {
     });
     const users = response.data.values;
 
-    if (!users || users.length === 0) {
+    if (!users || users.length < 2) { // Pelo menos um cabeçalho e um usuário
       return res.status(401).json({ message: 'Nenhum usuário encontrado na planilha de login.' });
     }
 
+    // Ignora a primeira linha (cabeçalho)
     const foundUser = users.slice(1).find(
       (row) => row[0] === username && row[1] === password
     );
 
     if (foundUser) {
-      res.status(200).json({ message: 'Login bem-sucedido!', user: { username } });
+      // O nível de acesso é a terceira coluna (índice 2)
+      const userLevel = parseInt(foundUser[2], 10); // Converte para número
+      res.status(200).json({ message: 'Login bem-sucedido!', user: { username, level: userLevel } });
     } else {
       res.status(401).json({ message: 'Credenciais inválidas.' });
     }
@@ -68,6 +107,80 @@ app.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Erro ao tentar fazer login.', error: error.message });
   }
 });
+
+// --- Rotas para a Meta de Produção ---
+let cachedMeta = null; // Cache simples para a meta
+
+// Rota para obter a meta de produção
+app.get('/api/meta-producao', async (req, res) => {
+  try {
+    if (cachedMeta !== null) {
+      return res.status(200).json({ meta: cachedMeta });
+    }
+
+    const { data, error } = await supabase.from('configuracoes')
+      .select('valor')
+      .eq('chave', 'meta_producao_diaria')
+      .single(); // Espera apenas um resultado
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = linha não encontrada
+      throw error;
+    }
+
+    const meta = data ? data.valor : 1000; // Valor padrão se não encontrada
+    cachedMeta = meta; // Cacheia o valor
+    res.status(200).json({ meta });
+
+  } catch (error) {
+    console.error('Erro ao buscar meta de produção do Supabase:', error.message);
+    res.status(500).json({ message: 'Erro ao buscar meta de produção.', error: error.message });
+  }
+});
+
+// Rota para atualizar a meta de produção
+// Adicionamos o middleware authenticateToken para simular o acesso ao req.user
+app.post('/api/meta-producao', authenticateToken, async (req, res) => {
+  const { meta } = req.body;
+  const user = req.user; // Obtém o usuário do middleware (simulado ou real)
+
+  // VERIFICAÇÃO DE NÍVEL DE ACESSO
+  // Assumindo que user.level é 2 para gestores
+  if (!user || user.level !== 2) {
+    return res.status(403).json({ message: 'Acesso negado. Você não tem permissão para alterar a meta.' });
+  }
+
+  if (typeof meta !== 'number' || meta < 0) {
+    return res.status(400).json({ message: 'Valor de meta inválido. Deve ser um número não negativo.' });
+  }
+
+  try {
+    // Tenta atualizar a meta existente
+    const { data, error: updateError } = await supabaseAdmin.from('configuracoes')
+      .update({ valor: meta, ultima_atualizacao: new Date().toISOString(), atualizado_por: user.username || 'Desconhecido' })
+      .eq('chave', 'meta_producao_diaria')
+      .select();
+
+    if (updateError && updateError.code !== 'PGRST116') { // PGRST116 = linha não encontrada
+        throw updateError;
+    }
+
+    if (!data || data.length === 0) { // Se não atualizou (não existia), insere
+        const { error: insertError } = await supabaseAdmin.from('configuracoes')
+            .insert({ chave: 'meta_producao_diaria', valor: meta, atualizado_por: user.username || 'Desconhecido' })
+            .select();
+        if (insertError) throw insertError;
+    }
+
+    cachedMeta = meta; // Atualiza o cache
+    res.status(200).json({ success: true, message: 'Meta atualizada com sucesso', meta });
+
+  } catch (error) {
+    console.error('Erro ao salvar nova meta no Supabase:', error.message);
+    res.status(500).json({ message: 'Erro ao salvar a meta de produção.', error: error.message });
+  }
+});
+
+// --- Rotas existentes (sem alterações aqui, exceto para o middleware authenticateToken se necessário no futuro) ---
 
 // Rota para buscar listas de dados
 app.get('/api/data/lists', async (req, res) => {
@@ -184,6 +297,7 @@ app.get('/api/apontamentos/injetora', async (req, res) => {
     res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
   }
 });
+
 
 app.listen(port, () => {
   console.log(`Backend rodando em http://localhost:${port}`);

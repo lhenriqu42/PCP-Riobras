@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -10,18 +10,27 @@ import {
   Select,
   MenuItem,
   Alert,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Collapse, IconButton
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Collapse, IconButton,
+  Button
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
 import axios from 'axios';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts'; // Importar componentes de gráfico
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell
+} from 'recharts';
+import { useAuth } from '../context/AuthContext';
+
+// Cores para o gráfico de pizza
+const COLORS = ['#00C49F', '#FF8042', '#0088FE']; // Conforme, Não Conforme, Dentro da Meta
 
 // Componente para exibir detalhes do produto/data
 function Row({ row }) {
@@ -66,9 +75,11 @@ function Row({ row }) {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {row.details.map((detailRow) => (
-                    <TableRow key={detailRow.id}> {/* Supondo que cada detalhe tenha um ID */}
-                      <TableCell component="th" scope="row">{detailRow.hora_apontamento}</TableCell>
+                  {row.details.map((detailRow, index) => (
+                    <TableRow key={detailRow.id || index}>
+                      <TableCell component="th" scope="row">
+                        {moment(detailRow.hora_apontamento, 'HH:mm:ss').format('HH:mm')}
+                      </TableCell>
                       <TableCell>{detailRow.turno}</TableCell>
                       <TableCell>{detailRow.maquina}</TableCell>
                       <TableCell>{detailRow.funcionario}</TableCell>
@@ -90,48 +101,128 @@ function Row({ row }) {
 
 
 export default function DashboardInjetora() {
+  const { user } = useAuth();
   const [loadingFilters, setLoadingFilters] = useState(true);
   const [error, setError] = useState('');
   const [apontamentos, setApontamentos] = useState([]);
-  const [dailyProductionData, setDailyProductionData] = useState([]); // Dados para o gráfico
-  const [aggregatedData, setAggregatedData] = useState([]); // Dados agregados para a nova tabela
+  const [dailyProductionData, setDailyProductionData] = useState([]);
+  const [aggregatedData, setAggregatedData] = useState([]);
+  const [pieChartData, setPieChartData] = useState([]);
 
-  // Estados para os filtros
   const [startDate, setStartDate] = useState(moment().subtract(7, 'days'));
   const [endDate, setEndDate] = useState(moment());
   const [selectedPeca, setSelectedPeca] = useState('');
   const [selectedTipoInjetora, setSelectedTipoInjetora] = useState('');
   const [selectedTurno, setSelectedTurno] = useState('');
-  const [metaProducao, setMetaProducao] = useState(1000); // Meta de produção padrão
 
-  // Estados para as listas de dados dos filtros
+  const [metaProducao, setMetaProducao] = useState(0);
+  const [editMetaMode, setEditMetaMode] = useState(false);
+  const [newMetaValue, setNewMetaValue] = useState(0);
+
   const [pecasList, setPecasList] = useState([]);
   const [maquinasList, setMaquinasList] = useState([]);
-  const [turnosList, setTurnosList] = useState(['Manha', 'Noite']);
+  const [turnosList] = useState(['Manha', 'Noite']);
 
-  // Efeito para carregar as listas de dados (funcionários, peças, máquinas)
   useEffect(() => {
-    // Carrega listas de filtros
-    const fetchLists = async () => {
+    const fetchData = async () => {
       try {
         setLoadingFilters(true);
-        const response = await axios.get('http://localhost:3001/api/data/lists');
-        setPecasList(response.data.pecas);
-        const uniqueTiposInjetora = [...new Set(response.data.maquinas.map(m => m.tipo_injetora))];
+        const listsResponse = await axios.get('http://localhost:3001/api/data/lists');
+        setPecasList(listsResponse.data.pecas);
+        const uniqueTiposInjetora = [...new Set(listsResponse.data.maquinas.map(m => m.tipo_injetora))];
         setMaquinasList(uniqueTiposInjetora);
+
+        const metaResponse = await axios.get('http://localhost:3001/api/meta-producao');
+        setMetaProducao(metaResponse.data.meta || 0);
+        setNewMetaValue(metaResponse.data.meta || 0);
+
       } catch (err) {
-        console.error('Erro ao carregar listas de filtros:', err);
-        setError('Erro ao carregar opções de filtro. Tente novamente.');
+        console.error('Erro ao carregar dados iniciais:', err);
+        setError('Erro ao carregar opções de filtro ou meta de produção. Tente novamente.');
       } finally {
         setLoadingFilters(false);
       }
     };
-    fetchLists();
+    fetchData();
   }, []);
 
-  // Efeito para carregar os apontamentos com base nos filtros
+  const processApontamentosForDashboard = useCallback((data, currentMeta) => {
+    const dailyAggregates = {};
+    const productDateAggregates = {};
+    let totalPecasConformes = 0;
+    let totalPecasNC = 0;
+    let totalProducaoEfetiva = 0;
+    let totalMetaProducao = 0;
+
+    data.forEach(ap => {
+      const date = moment(ap.data_apontamento).format('YYYY-MM-DD');
+      const peca = ap.peca;
+
+      if (!dailyAggregates[date]) {
+        dailyAggregates[date] = {
+          date: date,
+          quantidadeInjetada: 0,
+          pecasNC: 0,
+          quantidadeEfetiva: 0,
+          meta: currentMeta
+        };
+      }
+      dailyAggregates[date].quantidadeInjetada += ap.quantidade_injetada;
+      dailyAggregates[date].pecasNC += ap.pecas_nc;
+      dailyAggregates[date].quantidadeEfetiva += ap.quantidade_efetiva;
+
+      const key = `${peca}_${date}`;
+      if (!productDateAggregates[key]) {
+        productDateAggregates[key] = {
+          peca: peca,
+          data: date,
+          totalInjetada: 0,
+          totalNC: 0,
+          totalEfetiva: 0,
+          details: []
+        };
+      }
+      productDateAggregates[key].totalInjetada += ap.quantidade_injetada;
+      productDateAggregates[key].totalNC += ap.pecas_nc;
+      productDateAggregates[key].totalEfetiva += ap.quantidade_efetiva;
+      productDateAggregates[key].details.push(ap);
+
+      totalPecasConformes += (ap.quantidade_injetada - ap.pecas_nc);
+      totalPecasNC += ap.pecas_nc;
+      totalProducaoEfetiva += ap.quantidade_efetiva;
+    });
+
+    const numDays = endDate.diff(startDate, 'days') + 1;
+    totalMetaProducao = currentMeta * numDays;
+
+    const sortedDailyData = Object.values(dailyAggregates).sort((a, b) => moment(a.date).diff(moment(b.date)));
+    setDailyProductionData(sortedDailyData);
+
+    const sortedProductDateData = Object.values(productDateAggregates).sort((a, b) => {
+      const dateComparison = moment(a.data).diff(moment(b.data));
+      if (dateComparison !== 0) return dateComparison;
+      return a.peca.localeCompare(b.peca);
+    });
+    setAggregatedData(sortedProductDateData);
+
+    const totalPecas = totalPecasConformes + totalPecasNC;
+    const percentConformes = totalPecas > 0 ? (totalPecasConformes / totalPecas) * 100 : 0;
+    const percentNC = totalPecas > 0 ? (totalPecasNC / totalPecas) * 100 : 0;
+
+    const percentDentroMeta = totalMetaProducao > 0 && totalProducaoEfetiva > 0
+      ? (totalProducaoEfetiva / totalMetaProducao) * 100
+      : 0;
+
+    const finalPercentDentroMeta = Math.min(percentDentroMeta, 100);
+
+    setPieChartData([
+      { name: 'Peças Conformes', value: percentConformes },
+      { name: 'Peças Não Conformes', value: percentNC },
+      { name: 'Produção vs. Meta (%)', value: finalPercentDentroMeta },
+    ]);
+  }, [startDate, endDate]);
+
   useEffect(() => {
-    // Carrega apontamentos e processa para gráfico e tabela agregada
     const handleApplyFilters = async () => {
       setError('');
       setLoadingFilters(true);
@@ -144,10 +235,8 @@ export default function DashboardInjetora() {
           turno: selectedTurno,
         };
         const response = await axios.get('http://localhost:3001/api/apontamentos/injetora', { params });
-        setApontamentos(response.data); // Guarda os apontamentos brutos
-
-        // Processa dados para o gráfico e a tabela agregada
-        processApontamentosForDashboard(response.data);
+        setApontamentos(response.data);
+        processApontamentosForDashboard(response.data, metaProducao);
 
       } catch (err) {
         console.error('Erro ao buscar apontamentos filtrados:', err);
@@ -157,64 +246,8 @@ export default function DashboardInjetora() {
       }
     };
     handleApplyFilters();
-  }, [startDate, endDate, selectedPeca, selectedTipoInjetora, selectedTurno]);
+  }, [startDate, endDate, selectedPeca, selectedTipoInjetora, selectedTurno, metaProducao, processApontamentosForDashboard]);
 
-
-  // Função para processar os apontamentos e gerar dados para gráfico/tabela
-  const processApontamentosForDashboard = (data) => {
-    const dailyAggregates = {};
-    const productDateAggregates = {};
-
-    data.forEach(ap => {
-      const date = moment(ap.data_apontamento).format('YYYY-MM-DD');
-      const peca = ap.peca; // Código da peça
-
-      // Para o gráfico diário (Quantidade Injetada e Peças NC por dia)
-      if (!dailyAggregates[date]) {
-        dailyAggregates[date] = {
-          date: date,
-          quantidadeInjetada: 0,
-          pecasNC: 0,
-          quantidadeEfetiva: 0,
-          meta: metaProducao // Adiciona a meta para cada dia no gráfico
-        };
-      }
-      dailyAggregates[date].quantidadeInjetada += ap.quantidade_injetada;
-      dailyAggregates[date].pecasNC += ap.pecas_nc;
-      dailyAggregates[date].quantidadeEfetiva += ap.quantidade_efetiva;
-
-      // Para a tabela agregada por Produto e Data
-      const key = `${peca}_${date}`;
-      if (!productDateAggregates[key]) {
-        productDateAggregates[key] = {
-          peca: peca,
-          data: date,
-          totalInjetada: 0,
-          totalNC: 0,
-          totalEfetiva: 0,
-          details: [] // Para armazenar os apontamentos originais para os detalhes
-        };
-      }
-      productDateAggregates[key].totalInjetada += ap.quantidade_injetada;
-      productDateAggregates[key].totalNC += ap.pecas_nc;
-      productDateAggregates[key].totalEfetiva += ap.quantidade_efetiva;
-      productDateAggregates[key].details.push(ap); // Adiciona o apontamento original
-    });
-
-    // Converte objetos para arrays para Recharts e MUI Table
-    const sortedDailyData = Object.values(dailyAggregates).sort((a, b) => moment(a.date).diff(moment(b.date)));
-    setDailyProductionData(sortedDailyData);
-
-    const sortedProductDateData = Object.values(productDateAggregates).sort((a, b) => {
-      const dateComparison = moment(a.data).diff(moment(b.data));
-      if (dateComparison !== 0) return dateComparison;
-      return a.peca.localeCompare(b.peca); // Ordena por peça se as datas forem iguais
-    });
-    setAggregatedData(sortedProductDateData);
-  };
-
-
-  // Funções de manipulação de mudança para os filtros
   const handlePecaChange = (event) => {
     setSelectedPeca(event.target.value);
   };
@@ -227,10 +260,32 @@ export default function DashboardInjetora() {
     setSelectedTurno(event.target.value);
   };
 
-  const handleMetaChange = (event) => {
-    setMetaProducao(Number(event.target.value));
+  const handleNewMetaChange = (event) => {
+    setNewMetaValue(Number(event.target.value));
   };
 
+  const handleSaveMeta = async () => {
+    setError('');
+    try {
+      const response = await axios.post('http://localhost:3001/api/meta-producao', { meta: newMetaValue });
+      if (response.status === 200) {
+        setMetaProducao(newMetaValue);
+        setEditMetaMode(false);
+        processApontamentosForDashboard(apontamentos, newMetaValue);
+      }
+    } catch (err) {
+      console.error('Erro ao salvar nova meta:', err);
+      const errorMessage = err.response?.data?.message || 'Erro ao salvar a meta. Verifique suas permissões ou a conexão.';
+      setError(errorMessage);
+    }
+  };
+
+  const handleCancelEditMeta = () => {
+    setNewMetaValue(metaProducao);
+    setEditMetaMode(false);
+  };
+
+  const canEditMeta = user?.level === 2;
 
   return (
     <LocalizationProvider dateAdapter={AdapterMoment}>
@@ -316,51 +371,115 @@ export default function DashboardInjetora() {
                 </Select>
               </FormControl>
             </Grid>
-            {/* Campo para a Meta de Produção */}
-            <Grid item xs={12} sm={3}>
+            <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <TextField
                 label="Meta de Produção Diária"
                 type="number"
                 fullWidth
-                value={metaProducao}
-                onChange={handleMetaChange}
+                value={editMetaMode ? newMetaValue : metaProducao}
+                onChange={handleNewMetaChange}
+                disabled={!editMetaMode || !canEditMeta}
+                InputProps={{
+                  readOnly: !editMetaMode,
+                }}
               />
+              {canEditMeta && (
+                editMetaMode ? (
+                  <>
+                    <IconButton color="primary" onClick={handleSaveMeta} aria-label="Salvar Meta">
+                      <SaveIcon />
+                    </IconButton>
+                    <IconButton color="secondary" onClick={handleCancelEditMeta} aria-label="Cancelar Edição">
+                      <CancelIcon />
+                    </IconButton>
+                  </>
+                ) : (
+                  <IconButton color="default" onClick={() => setEditMetaMode(true)} aria-label="Editar Meta">
+                    <EditIcon />
+                  </IconButton>
+                )
+              )}
             </Grid>
           </Grid>
           {loadingFilters && <Typography sx={{ mt: 2 }}>Carregando opções de filtro...</Typography>}
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </Paper>
 
-        <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            Gráficos de Produção (Quantidade Efetiva vs. Meta)
-          </Typography>
-          {loadingFilters ? (
-            <Typography>Carregando dados para os gráficos...</Typography>
-          ) : dailyProductionData.length === 0 ? (
-            <Typography>Nenhum dado disponível para os gráficos com os filtros selecionados.</Typography>
-          ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart
-                data={dailyProductionData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="quantidadeEfetiva" stroke="#8884d8" name="Quantidade Efetiva Injetada" />
-                <Line type="monotone" dataKey="meta" stroke="#82ca9d" name="Meta de Produção" />
-                <Line type="monotone" dataKey="pecasNC" stroke="#ff0000" name="Peças Não Conformes" />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </Paper>
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={4}> {/* GRÁFICO DE LINHA: MD={4} */}
+            <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
+              <Typography variant="h6" gutterBottom>
+                Produção Diária (Quantidade Efetiva vs. Meta)
+              </Typography>
+              {loadingFilters ? (
+                <Typography>Carregando dados para os gráficos...</Typography>
+              ) : dailyProductionData.length === 0 ? (
+                <Typography>Nenhum dado disponível para os gráficos com os filtros selecionados.</Typography>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart
+                    data={dailyProductionData}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="quantidadeEfetiva" stroke="#8884d8" name="Quantidade Efetiva Injetada" />
+                    <Line type="monotone" dataKey="meta" stroke="#82ca9d" name="Meta de Produção" />
+                    <Line type="monotone" dataKey="pecasNC" stroke="#ff0000" name="Peças Não Conformes" />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </Paper>
+          </Grid>
 
-        <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
+          <Grid item xs={12} md={8}> {/* GRÁFICO DE PIZZA: MD={8} */}
+            <Paper elevation={3} sx={{ p: 1, height: '100%' }}>
+              <Typography variant="h6" gutterBottom>
+                Distribuição da Produção (%)
+              </Typography>
+              {loadingFilters ? (
+                <Typography>Calculando porcentagens...</Typography>
+              ) : pieChartData.length === 0 || pieChartData.every(data => data.value === 0) ? ( // MUDANÇA AQUI: Adiciona .length === 0
+                <Typography>Nenhum dado disponível para o gráfico de distribuição.</Typography>
+              ) : (
+                <ResponsiveContainer width="100%" height={350}>
+                  <PieChart>
+                    <Pie
+                      data={pieChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={80}
+                      outerRadius={120}
+                      fill="#8884d8"
+                      paddingAngle={5}
+                      dataKey="value"
+                      // labelLine={false} // Comente ou remova esta linha temporariamente
+                      // label={({ name, percent, value }) => { // Comente ou remova este bloco temporariamente
+                      //     if (value > 0) {
+                      //         return `${name}: ${(percent * 100).toFixed(0)}%`;
+                      //     }
+                      //     return '';
+                      // }}
+                    >
+                      {pieChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => `${value.toFixed(2)}%`} />
+                    <Legend layout="horizontal" align="center" verticalAlign="bottom" />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </Paper>
+          </Grid>
+        </Grid>
+
+        <Paper elevation={3} sx={{ p: 3, mt: 4 }}>
           <Typography variant="h6" gutterBottom>
-            Visualização por Produto e Data
+            Dados Filtrados (Tabela)
           </Typography>
           {loadingFilters ? (
             <Typography>Carregando dados da tabela...</Typography>
