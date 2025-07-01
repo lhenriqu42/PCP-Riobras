@@ -19,7 +19,7 @@ export default function ApontamentosInjetoraInicial() {
   const [formData, setFormData] = useState({
     tipoInjetora: '',
     dataApontamento: '',
-    horaApontamento: '',
+    // <<<<<<< REMOVIDO: horaApontamento não é mais necessário aqui
     turno: '',
     maquina: '',
     funcionario: '',
@@ -60,24 +60,21 @@ export default function ApontamentosInjetoraInicial() {
     }));
   };
 
-  const handleTimeChange = (e) => {
-    setFormData((prevData) => ({
-      ...prevData,
-      horaApontamento: e.target.value,
-    }));
-  };
+  // <<<<<<< REMOVIDO: handleTimeChange não é mais necessário
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
 
-    if (!formData.tipoInjetora || !formData.dataApontamento || !formData.horaApontamento ||
+    // <<<<<<< ALTERAÇÃO: Remover validação de horaApontamento
+    if (!formData.tipoInjetora || !formData.dataApontamento ||
         !formData.turno || !formData.maquina || !formData.funcionario || !formData.peca) {
       setError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
     console.log('Dados iniciais submetidos:', formData);
+    // A hora de início do turno será determinada na próxima tela com base na data e turno.
     navigate('/apontamentos/injetora/horaria', { state: { initialData: formData } });
   };
 
@@ -95,7 +92,7 @@ export default function ApontamentosInjetoraInicial() {
 
       <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
         <Grid container spacing={3}>
-          {/* Tipo de Injetora */}
+          {}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required>
               <InputLabel id="tipo-injetora-label">Tipo de Injetora</InputLabel>
@@ -105,9 +102,9 @@ export default function ApontamentosInjetoraInicial() {
                 value={formData.tipoInjetora}
                 label="Tipo de Injetora"
                 onChange={handleChange}
-                displayEmpty // Permite que o MenuItem vazio seja exibido
+                displayEmpty 
               >
-                <MenuItem value="">Tipo de Injetora</MenuItem> {/* Conteúdo visível quando vazio */}
+                <MenuItem value="">Tipo de Injetora</MenuItem> {}
                 <MenuItem value="200">200</MenuItem>
                 <MenuItem value="250">250</MenuItem>
                 <MenuItem value="300">300</MenuItem>
@@ -116,7 +113,7 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {/* Máquina */}
+          {}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required>
               <InputLabel id="maquina-label">Máquina</InputLabel>
@@ -139,7 +136,7 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {/* Turno */}
+          {}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required>
               <InputLabel id="turno-label">Turno</InputLabel>
@@ -158,7 +155,7 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {/* Funcionário */}
+          {}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required>
               <InputLabel id="funcionario-label">Funcionário</InputLabel>
@@ -180,7 +177,7 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {/* Peça */}
+          {}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required>
               <InputLabel id="peca-label">Peça</InputLabel>
@@ -202,7 +199,7 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {/* Data do Apontamento */}
+          {}
           <Grid item xs={12} sm={6}>
             <TextField
               label="Data do Apontamento"
@@ -213,13 +210,13 @@ export default function ApontamentosInjetoraInicial() {
               fullWidth
               required
               InputLabelProps={{
-                shrink: true, // Garante que o label fique "encolhido" acima
+                shrink: true,
               }}
             />
           </Grid>
 
-          {/* Hora do Apontamento */}
-          <Grid item xs={12} sm={6}>
+          {/* <<<<<<< REMOVIDO: Campo de Hora do Apontamento */}
+          {/* <Grid item xs={12} sm={6}>
             <TextField
               label="Hora do Apontamento"
               type="time"
@@ -229,10 +226,10 @@ export default function ApontamentosInjetoraInicial() {
               fullWidth
               required
               InputLabelProps={{
-                shrink: true, // Garante que o label fique "encolhido" acima
+                shrink: true, 
               }}
             />
-          </Grid>
+          </Grid> */}
 
           <Grid item xs={12}>
             <Button

@@ -1,30 +1,26 @@
 import React, { useState } from 'react';
 import { Box, TextField, Button, Typography, Paper, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // Importe o useAuth do seu AuthContext
+import { useAuth } from '../context/AuthContext'; 
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth(); // Use a função login do AuthContext
+  const { login } = useAuth(); 
 
   const handleLogin = async () => {
     try {
-      setError(''); // Limpa qualquer erro anterior
-
-      // Chame a função login do AuthContext
+      setError(''); 
       const result = await login(username, password);
 
       if (result.success) {
         navigate('/home');
       } else {
-        // Se o login falhou, exibe a mensagem de erro retornada pelo AuthContext
         setError(result.message || 'Erro ao tentar fazer login. Verifique suas credenciais.');
       }
     } catch (err) {
-      // Este catch pegaria erros que não foram tratados pelo AuthContext, como rede.
       console.error('Erro inesperado no componente de login:', err);
       setError('Ocorreu um erro inesperado. Tente novamente mais tarde.');
     }
