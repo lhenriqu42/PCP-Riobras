@@ -1,3 +1,4 @@
+// src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Login from './components/Login';
@@ -5,58 +6,87 @@ import HomePage from './components/HomePage';
 import ApontamentosInjetoraInicial from './components/ApontamentosInjetoraInicial';
 import ApontamentosInjetoraHoraria from './components/ApontamentosInjetoraHoraria';
 import DashboardInjetora from './pages/DashboardInjetora';
+import ProductQualityDashboard from './pages/ProductQualityDashboard';
 import Layout from './layout/Layout';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { ThemeProvider, CssBaseline } from '@mui/material';
+// ADICIONE Box e CircularProgress AQUI:
+import { ThemeProvider, CssBaseline, Box, CircularProgress } from '@mui/material'; // <-- Linha corrigida
 import theme from './theme';
 
-const PrivateRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/login" />;
+// Modificado para aceitar uma prop `requiredLevel`
+const PrivateRoute = ({ children, requiredLevel }) => {
+  const { isAuthenticated, user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  if (requiredLevel && user && user.level < requiredLevel) {
+    return <Navigate to="/home" replace />;
+  }
+
+  return children;
 };
 
+
 function App() {
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <Router>
-          <Routes>
-            {}
-            <Route path="/Login" element={<Login />} />
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Rotas Públicas */}
+            <Route path="/Login" element={<Login />} />
 
-            {}
-            <Route
-              path="/" 
-              element={
-                <PrivateRoute>
-                  <Layout /> {}
-                </PrivateRoute>
-              }
-            >
-              {}
-              <Route index element={<Navigate to="/dashboard/injetora" replace />} />
-              <Route path="dashboard/injetora" element={<DashboardInjetora />} />
+            {/* Rotas Protegidas que usam o Layout */}
+            <Route
+              path="/"
+              element={
+                <PrivateRoute>
+                  <Layout />
+                </PrivateRoute>
+              }
+            >
+              {/* Rota Index, redireciona para o Dashboard padrão */}
+              <Route index element={<Navigate to="/dashboard/injetora" replace />} />
+              
+              {/* Dashboards */}
+              <Route path="dashboard/injetora" element={<DashboardInjetora />} />
+              {/* NOVA ROTA: Dashboard de Qualidade (Nível de acesso 2 ou mais) */}
+              <Route
+                path="dashboard/qualidade"
+                element={
+                  <PrivateRoute requiredLevel={2}> {/* Requer nível 2 para esta rota */}
+                    <ProductQualityDashboard />
+                  </PrivateRoute>
+                }
+              />
 
-              {}
-              <Route path="apontamentos/injetora/inicial" element={<ApontamentosInjetoraInicial />} />
-              <Route path="apontamentos/injetora/horaria" element={<ApontamentosInjetoraHoraria />} />
+              {/* Apontamentos */}
+              <Route path="apontamentos/injetora/inicial" element={<ApontamentosInjetoraInicial />} />
+              <Route path="apontamentos/injetora/horaria" element={<ApontamentosInjetoraHoraria />} />
 
-              {}
-              <Route path="home" element={<HomePage />} />
+              {/* Outras Rotas */}
+              <Route path="home" element={<HomePage />} />
 
-              {}
-              {}
+              {/* Rota Catch-all */}
+              <Route path="*" element={<Navigate to="/dashboard/injetora" replace />} />
+            </Route>
 
-              {}
-              <Route path="*" element={<Navigate to="/dashboard/injetora" replace />} />
-            </Route>
-
-          </Routes>
-        </Router>
-      </AuthProvider>
-    </ThemeProvider>
-  );
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
+  );
 }
 
 export default App;

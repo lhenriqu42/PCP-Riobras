@@ -254,6 +254,54 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
     }
 });
 
+//rota tela não conformidades:
+app.get('/api/produtos/taxa-nc', authenticateToken, async (req, res) => {
+    try {
+        // Acessa os dados de apontamentos_injetora
+        const { data: apontamentos, error } = await supabase
+            .from('apontamentos_injetora')
+            .select('peca, quantidade_injetada, pecas_nc');
+
+        if (error) {
+            console.error('Erro Supabase ao buscar apontamentos para taxa NC:', error);
+            return res.status(500).json({
+                message: 'Erro ao buscar dados para calcular a taxa de peças não conformes.',
+                details: error.message || error.details || error.hint || error.code || 'Detalhes desconhecidos.',
+            });
+        }
+
+        // Agrupar e calcular totais por peça
+        const produtosData = apontamentos.reduce((acc, apontamento) => {
+            const { peca, quantidade_injetada, pecas_nc } = apontamento;
+            if (!acc[peca]) {
+                acc[peca] = { totalInjetado: 0, totalPecasNC: 0 };
+            }
+            acc[peca].totalInjetado += quantidade_injetada || 0;
+            acc[peca].totalPecasNC += pecas_nc || 0;
+            return acc;
+        }, {});
+
+        // Calcular a taxa de não conformidade para cada produto
+        const resultados = Object.keys(produtosData).map(peca => {
+            const { totalInjetado, totalPecasNC } = produtosData[peca];
+            const taxaNC = totalInjetado > 0 ? (totalPecasNC / totalInjetado) * 100 : 0;
+            return {
+                peca,
+                totalInjetado,
+                totalPecasNC,
+                taxaNC: parseFloat(taxaNC.toFixed(2)) // Arredonda para 2 casas decimais
+            };
+        });
+
+        res.status(200).json(resultados);
+
+    } catch (error) {
+        console.error('Erro geral ao calcular taxa de peças não conformes:', error.message);
+        res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
+    }
+});
+
+
 // Rota para buscar apontamentos com filtros
 app.get('/api/apontamentos/injetora', async (req, res) => {
     const { dataInicio, dataFim, peca, tipoInjetora, turno } = req.query;
