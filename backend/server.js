@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { google } = require('googleapis');
 const { createClient } = require('@supabase/supabase-js');
-const jwt = require('jsonwebtoken'); // Importar jsonwebtoken
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
@@ -36,7 +36,7 @@ if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-const jwtSecret = process.env.JWT_SECRET; // Chave secreta para JWT
+const jwtSecret = process.env.JWT_SECRET;
 if (!jwtSecret) {
     console.error("ERRO: Variável de ambiente JWT_SECRET não definida.");
     process.exit(1);
@@ -45,7 +45,7 @@ if (!jwtSecret) {
 // Middleware de autenticação JWT
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Espera "Bearer SEUTOKEN"
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (token == null) {
         return res.status(401).json({ message: 'Token de autenticação não fornecido.' });
@@ -54,11 +54,8 @@ const authenticateToken = (req, res, next) => {
     jwt.verify(token, jwtSecret, (err, user) => {
         if (err) {
             console.error("Erro na verificação do token JWT:", err.message);
-            // Se o token for inválido ou expirado, retorne 403 Forbidden
             return res.status(403).json({ message: 'Token inválido ou expirado.' });
         }
-        // Anexa as informações decodificadas do usuário ao objeto de requisição
-        // Assumindo que o token JWT contém { id: userId, level: userLevel, username: username }
         req.user = user; 
         next();
     });
@@ -86,16 +83,16 @@ app.post('/login', async (req, res) => {
         if (foundUser) {
             const userLevel = parseInt(foundUser[2], 10);
             const userPayload = {
-                id: username, // Usando username como ID para o token
+                id: username,
                 username: username,
                 level: userLevel
             };
-            const token = jwt.sign(userPayload, jwtSecret, { expiresIn: '1h' }); // Token expira em 1 hora
+            const token = jwt.sign(userPayload, jwtSecret, { expiresIn: '1h' });
 
             res.status(200).json({ 
                 message: 'Login bem-sucedido!', 
-                token: token, // Envie o token para o frontend
-                user: { username, level: userLevel } // Mantenha o user object para conveniência
+                token: token,
+                user: { username, level: userLevel }
             });
         } else {
             res.status(401).json({ message: 'Credenciais inválidas.' });
@@ -109,7 +106,6 @@ app.post('/login', async (req, res) => {
 
 let cachedMeta = null; 
 
-// rota meta de produção
 app.get('/api/meta-producao', async (req, res) => {
     try {
         if (cachedMeta !== null) {
@@ -136,16 +132,11 @@ app.get('/api/meta-producao', async (req, res) => {
 });
 
 
-// APLICA authenticateToken AQUI!
 app.post('/api/meta-producao', authenticateToken, async (req, res) => {
-    const user = req.user; // O user vem agora do token decodificado pelo middleware authenticateToken
+    const user = req.user;
     const { meta } = req.body;
 
-    // console.log("Usuário decodificado pelo token (no backend):", user); // DEBUG
-    // console.log("Nível do usuário (no backend):", user?.level); // DEBUG
-
     if (!user || user.level !== 2) {
-        // Esta é a mensagem que o frontend recebe
         return res.status(403).json({ message: 'Acesso negado. Você não tem permissão para alterar a meta.' });
     }
 
@@ -179,8 +170,7 @@ app.post('/api/meta-producao', authenticateToken, async (req, res) => {
     }
 });
 
-// APLICA authenticateToken para rotas que precisam de autenticação, se houver
-app.get('/api/data/lists', async (req, res) => { // Esta rota não requer autenticação forte, então não apliquei authenticateToken
+app.get('/api/data/lists', async (req, res) => {
     try {
         const { data: funcionarios, error: funcError } = await supabase.from('funcionarios').select('nome_completo');
         if (funcError) throw funcError;
@@ -198,12 +188,15 @@ app.get('/api/data/lists', async (req, res) => { // Esta rota não requer autent
     }
 });
 
-// APLICA authenticateToken AQUI, se você quiser restringir quem pode criar apontamentos
+// Rota para registrar apontamentos de injetora
 app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => { 
+    // **DEBUG: LOG DO PAYLOAD COMPLETO (ANTES DA DESESTRUTURAÇÃO)**
+    console.log('Payload recebido no backend para /api/apontamentos/injetora:', req.body);
+
     const {
         tipoInjetora,
         dataApontamento,
-        horaApontamento,
+        hora_apontamento, // <--- CORRIGIDO AQUI: USANDO 'hora_apontamento' (snake_case)
         turno,
         maquina,
         funcionario,
@@ -213,6 +206,9 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
         observacoes,
         tipo_registro
     } = req.body;
+
+    // **DEBUG: LOG ESPECÍFICO DE HORA_APONTAMENTO (APÓS A DESESTRUTURAÇÃO)**
+    console.log('Valor de hora_apontamento recebido (após desestruturação):', hora_apontamento);
 
     // Se você quiser que apenas nível 1 possa criar apontamentos, adicione:
     // if (!req.user || req.user.level !== 1) {
@@ -228,7 +224,7 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
                 {
                     tipo_injetora: tipoInjetora,
                     data_apontamento: dataApontamento,
-                    hora_apontamento: horaApontamento,
+                    hora_apontamento: hora_apontamento, // <--- USANDO A VARIÁVEL CORRETA AQUI
                     turno: turno,
                     maquina: maquina,
                     funcionario: funcionario,
@@ -244,6 +240,7 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
 
         if (error) {
             console.error('Erro Supabase ao inserir:', error);
+            // Melhora a mensagem de erro para incluir mais detalhes do Supabase
             return res.status(500).json({
                 message: 'Erro ao inserir apontamento.',
                 details: error.message || error.details || error.hint || error.code || 'Detalhes desconhecidos.',
@@ -257,7 +254,7 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
     }
 });
 
-//buscar apontamentos com filtros (não requer autenticação se é público)
+// Rota para buscar apontamentos com filtros
 app.get('/api/apontamentos/injetora', async (req, res) => {
     const { dataInicio, dataFim, peca, tipoInjetora, turno } = req.query;
 
