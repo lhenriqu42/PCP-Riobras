@@ -24,13 +24,10 @@ import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
 import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-    PieChart, Pie, Cell
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { useAuth } from '../context/AuthContext'; // Verifique novamente este caminho se o erro persistir!
+import { useAuth } from '../context/AuthContext';
 import { useEffect, useCallback } from 'react';
-
-const COLORS = ['#00C49F', '#FF8042', '#0088FE'];
 
 // Componente Row agora recebe a linha agrupada
 function Row({ row }) {
@@ -52,14 +49,14 @@ function Row({ row }) {
                     {row.peca}
                 </TableCell>
                 <TableCell>{moment(row.data).format('DD/MM/YYYY')}</TableCell>
-                <TableCell>{row.turno}</TableCell> {/* Adicionado Turno */}
-                <TableCell>{row.funcionario}</TableCell> {/* Adicionado Funcionário */}
-                <TableCell>{row.maquina}</TableCell> {/* Adicionado Máquina */}
+                <TableCell>{row.turno}</TableCell>
+                <TableCell>{row.funcionario}</TableCell>
+                <TableCell>{row.maquina}</TableCell>
                 <TableCell align="right">{row.totalEfetiva}</TableCell>
                 <TableCell align="right">{row.totalNC}</TableCell>
             </TableRow>
             <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}> {/* Aumente o colSpan se adicionar mais colunas */}
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
                     <Collapse in={open} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 1 }}>
                             <Typography variant="h6" gutterBottom component="div">
@@ -69,9 +66,9 @@ function Row({ row }) {
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>Hora</TableCell>
-                                        <TableCell>Turno</TableCell> {/* Re-adicionado aqui para visualização nos detalhes */}
-                                        <TableCell>Máquina</TableCell> {/* Re-adicionado aqui para visualização nos detalhes */}
-                                        <TableCell>Funcionário</TableCell> {/* Re-adicionado aqui para visualização nos detalhes */}
+                                        <TableCell>Turno</TableCell>
+                                        <TableCell>Máquina</TableCell>
+                                        <TableCell>Funcionário</TableCell>
                                         <TableCell align="right">Quant. Injetada</TableCell>
                                         <TableCell align="right">Peças NC</TableCell>
                                         <TableCell align="right">Quant. Efetiva</TableCell>
@@ -104,13 +101,12 @@ function Row({ row }) {
 }
 
 export default function DashboardInjetora() {
-    const { user } = useAuth(); // Assume que useAuth retorna um objeto user com uma propriedade 'level'
+    const { user } = useAuth();
     const [loadingFilters, setLoadingFilters] = useState(true);
     const [error, setError] = useState('');
-    const [apontamentos, setApontamentos] = useState([]); // Armazena os dados brutos recebidos da API
-    const [dailyProductionData, setDailyProductionData] = useState([]); // Dados para o gráfico diário
-    const [aggregatedData, setAggregatedData] = useState([]); // Dados AGRUPADOS para a tabela principal
-    const [pieChartData, setPieChartData] = useState([]);
+    const [apontamentos, setApontamentos] = useState([]);
+    const [dailyProductionData, setDailyProductionData] = useState([]);
+    const [aggregatedData, setAggregatedData] = useState([]);
 
     const [startDate, setStartDate] = useState(moment().subtract(7, 'days'));
     const [endDate, setEndDate] = useState(moment());
@@ -124,78 +120,65 @@ export default function DashboardInjetora() {
 
     const [pecasList, setPecasList] = useState([]);
     const [maquinasList, setMaquinasList] = useState([]);
-    const [turnosList] = useState(['Manha', 'Tarde', 'Noite']);
+    const [turnosList] = useState(['Manha', 'Noite']);
 
-    const canEditMeta = user?.level === 2; // Determina se o usuário tem permissão para editar a meta
+    const canEditMeta = user?.level === 2;
 
     // Função para processar os apontamentos para o dashboard (gráficos e tabela)
     const processApontamentosForDashboard = useCallback((data, currentMeta) => {
-        const dailyAggregates = {}; // Para o gráfico de linha
-        const tableAggregates = {}; // Para a tabela agrupada
-
-        let totalPecasConformes = 0;
-        let totalPecasNC = 0;
-        let totalProducaoEfetiva = 0;
+        const dailyAggregates = {};
+        const tableAggregates = {};
 
         data.forEach(ap => {
             const dateKey = moment(ap.data_apontamento).format('YYYY-MM-DD');
 
-            // --- Lógica para o Gráfico Diário (continua agregando por dia) ---
+            // --- Lógica para o Gráfico Diário ---
             if (!dailyAggregates[dateKey]) {
                 dailyAggregates[dateKey] = {
                     date: dateKey,
                     quantidadeInjetada: 0,
                     pecasNC: 0,
                     quantidadeEfetiva: 0,
-                    meta: currentMeta
+                    meta: Number(currentMeta) // Garante que a meta seja um número
                 };
             }
-            dailyAggregates[dateKey].quantidadeInjetada += ap.quantidade_injetada;
-            dailyAggregates[dateKey].pecasNC += ap.pecas_nc;
-            dailyAggregates[dateKey].quantidadeEfetiva += ap.quantidade_efetiva;
+            // Garante que os valores sejam números, tratando possíveis null/undefined/string
+            dailyAggregates[dateKey].quantidadeInjetada += Number(ap.quantidade_injetada || 0);
+            dailyAggregates[dateKey].pecasNC += Number(ap.pecas_nc || 0);
+            dailyAggregates[dateKey].quantidadeEfetiva += Number(ap.quantidade_efetiva || 0);
             // --- Fim da Lógica para o Gráfico Diário ---
 
             // --- Lógica para a Tabela Principal (agrupando por Peça, Data, Turno, Funcionário, Máquina) ---
-            // Crie uma chave única para o agrupamento da tabela
             const tableGroupKey = `${ap.peca}_${dateKey}_${ap.turno}_${ap.funcionario}_${ap.maquina}`;
 
             if (!tableAggregates[tableGroupKey]) {
                 tableAggregates[tableGroupKey] = {
-                    // ID único para a linha da tabela agrupada (pode ser a própria chave)
                     id: tableGroupKey,
                     peca: ap.peca,
-                    data: dateKey, // A data do agrupamento
+                    data: dateKey,
                     turno: ap.turno,
                     funcionario: ap.funcionario,
                     maquina: ap.maquina,
                     totalEfetiva: 0,
                     totalNC: 0,
-                    details: [] // Aqui vão os apontamentos horários (detalhes)
+                    details: []
                 };
             }
-            // Soma os totais para a linha agrupada
-            tableAggregates[tableGroupKey].totalEfetiva += ap.quantidade_efetiva;
-            tableAggregates[tableGroupKey].totalNC += ap.pecas_nc;
-            // Adiciona o apontamento atual como um detalhe para essa linha agrupada
+            tableAggregates[tableGroupKey].totalEfetiva += Number(ap.quantidade_efetiva || 0);
+            tableAggregates[tableGroupKey].totalNC += Number(ap.pecas_nc || 0);
             tableAggregates[tableGroupKey].details.push(ap);
             // --- Fim da Lógica para a Tabela Principal ---
-
-            totalPecasConformes += (ap.quantidade_injetada - ap.pecas_nc);
-            totalPecasNC += ap.pecas_nc;
-            totalProducaoEfetiva += ap.quantidade_efetiva;
         });
-
-        const numDays = endDate.diff(startDate, 'days') + 1;
-        const totalMetaProducao = currentMeta * numDays;
 
         const sortedDailyData = Object.values(dailyAggregates).sort((a, b) => moment(a.date).diff(moment(b.date)));
         setDailyProductionData(sortedDailyData);
 
-        // Converte o objeto agrupado da tabela para um array e ordena
+        // Adiciona um log para inspecionar os dados do gráfico
+        console.log("Dados para o Gráfico Diário:", sortedDailyData);
+
         const sortedTableData = Object.values(tableAggregates).sort((a, b) => {
             const dateComparison = moment(a.data).diff(moment(b.data));
             if (dateComparison !== 0) return dateComparison;
-            // Se as datas são iguais, ordene por peça, depois turno, depois funcionário, depois máquina
             let comparison = a.peca.localeCompare(b.peca);
             if (comparison !== 0) return comparison;
             comparison = a.turno.localeCompare(b.turno);
@@ -205,22 +188,19 @@ export default function DashboardInjetora() {
             return a.maquina.localeCompare(b.maquina);
         });
 
-        // Para cada grupo na tabela, ordene os detalhes por hora, considerando o turno da noite
         sortedTableData.forEach(group => {
             group.details.sort((a, b) => {
                 const timeA = moment(a.hora_apontamento, 'HH:mm');
                 const timeB = moment(b.hora_apontamento, 'HH:mm');
 
-                // Se o turno for Noite, ajusta a "data" para a ordenação
                 let effectiveTimeA = timeA;
                 let effectiveTimeB = timeB;
 
                 if (group.turno === 'Noite') {
-                    // Se a hora for entre 00:00 e 06:00, some 24 horas para que ela seja ordenada após as horas do dia anterior (18:00-23:00)
-                    if (timeA.hour() >= 0 && timeA.hour() < 7) { // 00:00 a 06:59
+                    if (timeA.hour() >= 0 && timeA.hour() < 7) {
                         effectiveTimeA = moment(a.hora_apontamento, 'HH:mm').add(24, 'hours');
                     }
-                    if (timeB.hour() >= 0 && timeB.hour() < 7) { // 00:00 a 06:59
+                    if (timeB.hour() >= 0 && timeB.hour() < 7) {
                         effectiveTimeB = moment(b.hora_apontamento, 'HH:mm').add(24, 'hours');
                     }
                 }
@@ -228,24 +208,9 @@ export default function DashboardInjetora() {
             });
         });
 
-        setAggregatedData(sortedTableData); // Definindo a lista de dados AGRUPADOS para a tabela
+        setAggregatedData(sortedTableData);
 
-        const totalPecas = totalPecasConformes + totalPecasNC;
-        const percentConformes = totalPecas > 0 ? (totalPecasConformes / totalPecas) * 100 : 0;
-        const percentNC = totalPecas > 0 ? (totalPecasNC / totalPecas) * 100 : 0;
-
-        const percentDentroMeta = totalMetaProducao > 0 && totalProducaoEfetiva > 0
-            ? (totalProducaoEfetiva / totalMetaProducao) * 100
-            : 0;
-
-        const finalPercentDentroMeta = Math.min(percentDentroMeta, 100);
-
-        setPieChartData([
-            { name: 'Peças Conformes', value: percentConformes },
-            { name: 'Peças Não Conformes', value: percentNC },
-            { name: 'Produção vs. Meta (%)', value: finalPercentDentroMeta },
-        ]);
-    }, [startDate, endDate]); // Dependências da useCallback
+    }, []);
 
 
     const handleApplyFilters = useCallback(async () => {
@@ -260,8 +225,8 @@ export default function DashboardInjetora() {
                 turno: selectedTurno === 'todos' ? null : selectedTurno,
             };
             const response = await axios.get('http://localhost:3001/api/apontamentos/injetora', { params });
-            setApontamentos(response.data); // Armazena os dados brutos
-            processApontamentosForDashboard(response.data, metaProducao); // Processa para exibição
+            setApontamentos(response.data);
+            processApontamentosForDashboard(response.data, metaProducao);
         } catch (err) {
             console.error('Erro ao buscar apontamentos filtrados:', err);
             setError('Erro ao buscar dados para o relatório.');
@@ -281,8 +246,8 @@ export default function DashboardInjetora() {
                 setMaquinasList(uniqueTiposInjetora);
 
                 const metaResponse = await axios.get('http://localhost:3001/api/meta-producao');
-                setMetaProducao(metaResponse.data.meta || 0);
-                setNewMetaValue(metaResponse.data.meta || 0);
+                setMetaProducao(Number(metaResponse.data.meta || 0)); // Garante que a meta seja um número
+                setNewMetaValue(Number(metaResponse.data.meta || 0)); // Garante que newMetaValue seja um número
 
             } catch (err) {
                 console.error('Erro ao carregar dados iniciais:', err);
@@ -312,7 +277,7 @@ export default function DashboardInjetora() {
     };
 
     const handleNewMetaChange = (event) => {
-        setNewMetaValue(Number(event.target.value));
+        setNewMetaValue(Number(event.target.value)); // Garante que o valor digitado é um número
     };
 
     const handleSaveMeta = async () => {
@@ -364,7 +329,7 @@ export default function DashboardInjetora() {
                                 onChange={(newValue) => setEndDate(newValue)}
                                 renderInput={(params) => <TextField {...params} fullWidth />}
                                 format="DD/MM/YYYY"
-                                />
+                            />
                         </Grid>
                         <Grid item xs={12} sm={2}>
                             <FormControl fullWidth>
@@ -480,17 +445,18 @@ export default function DashboardInjetora() {
                 </Paper>
 
                 <Grid container spacing={4}>
-                    <Grid item xs={12} md={4}>
+                    {/* O Line Chart agora ocupa 12 colunas em md */}
+                    <Grid item xs={12} md={12}>
                         <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
                             <Typography variant="h6" gutterBottom>
-                                Produção Diária (Quantidade Efetiva vs. Meta)
+                                Produção Diária (Quantidade Efetiva vs. Meta e Peças NC)
                             </Typography>
                             {loadingFilters ? (
                                 <Typography>Carregando dados para os gráficos...</Typography>
                             ) : dailyProductionData.length === 0 ? (
                                 <Typography>Nenhum dado disponível para os gráficos com os filtros selecionados.</Typography>
                             ) : (
-                                <ResponsiveContainer width="100%" height={300}>
+                                <ResponsiveContainer width="101%" height={300}>
                                     <LineChart
                                         data={dailyProductionData}
                                         margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
@@ -509,39 +475,7 @@ export default function DashboardInjetora() {
                         </Paper>
                     </Grid>
 
-                    <Grid item xs={12} md={8}>
-                        <Paper elevation={3} sx={{ p: 1, height: '100%' }}>
-                            <Typography variant="h6" gutterBottom>
-                                Distribuição da Produção (%)
-                            </Typography>
-                            {loadingFilters ? (
-                                <Typography>Calculando porcentagens...</Typography>
-                            ) : pieChartData.length === 0 || pieChartData.every(data => data.value === 0) ? (
-                                <Typography>Nenhum dado disponível para o gráfico de distribuição.</Typography>
-                            ) : (
-                                <ResponsiveContainer width="100%" height={350}>
-                                    <PieChart>
-                                        <Pie
-                                            data={pieChartData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={80}
-                                            outerRadius={120}
-                                            fill="#8884d8"
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                        >
-                                            {pieChartData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip formatter={(value) => `${value.toFixed(2)}%`} />
-                                        <Legend layout="horizontal" align="center" verticalAlign="bottom" />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            )}
-                        </Paper>
-                    </Grid>
+                    {/* REMOVIDO: O Grid item que continha o Pie Chart */}
                 </Grid>
 
                 <Paper elevation={3} sx={{ p: 3, mt: 4 }}>
@@ -560,11 +494,11 @@ export default function DashboardInjetora() {
                                         <TableCell />
                                         <TableCell>Peça</TableCell>
                                         <TableCell>Data</TableCell>
-                                        <TableCell>Turno</TableCell> {/* Nova coluna */}
-                                        <TableCell>Funcionário</TableCell> {/* Nova coluna */}
-                                        <TableCell>Máquina</TableCell> {/* Nova coluna */}
+                                        <TableCell>Turno</TableCell>
+                                        <TableCell>Funcionário</TableCell>
+                                        <TableCell>Máquina</TableCell>
                                         <TableCell align="right">Total Efetiva</TableCell>
-                                        <TableCell align="right">Total Peças NC</TableCell> {/* Nova coluna */}
+                                        <TableCell align="right">Total Peças NC</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
