@@ -16,7 +16,7 @@ function HomePage() {
           Navegue pelas funcionalidades:
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
-          Use o menu lateral para acessar o Dashboard ou os formulários de Apontamento.
+          Use o menu lateral para acessar o Dashboard ou a tela de Apontamento.
         </Typography>
         {}
         <Grid container spacing={3} justifyContent="center" sx={{ mt: 3 }}>
@@ -24,7 +24,7 @@ function HomePage() {
           <Grid item xs={12} sm={6}>
             <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
               <Typography variant="h6" color="primary">Visão Geral da Produção</Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>Acesse o dashboard para monitorar métricas chave.</Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>Acesse o dashboard para monitorar os apontamentos.</Typography>
               {}
               {}
             </Paper>
@@ -32,7 +32,7 @@ function HomePage() {
           <Grid item xs={12} sm={6}>
             <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
               <Typography variant="h6" color="secondary">Registrar Apontamentos</Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>Preencha os dados da produção diária ou horária.</Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>Preencha os dados da produção diária.</Typography>
               {}
             </Paper>
           </Grid>
