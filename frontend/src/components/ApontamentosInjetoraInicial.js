@@ -19,7 +19,6 @@ export default function ApontamentosInjetoraInicial() {
   const [formData, setFormData] = useState({
     tipoInjetora: '',
     dataApontamento: '',
-    // <<<<<<< REMOVIDO: horaApontamento não é mais necessário aqui
     turno: '',
     maquina: '',
     funcionario: '',
@@ -60,13 +59,10 @@ export default function ApontamentosInjetoraInicial() {
     }));
   };
 
-  // <<<<<<< REMOVIDO: handleTimeChange não é mais necessário
-
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
 
-    // <<<<<<< ALTERAÇÃO: Remover validação de horaApontamento
     if (!formData.tipoInjetora || !formData.dataApontamento ||
         !formData.turno || !formData.maquina || !formData.funcionario || !formData.peca) {
       setError('Por favor, preencha todos os campos obrigatórios.');
@@ -74,7 +70,6 @@ export default function ApontamentosInjetoraInicial() {
     }
 
     console.log('Dados iniciais submetidos:', formData);
-    // A hora de início do turno será determinada na próxima tela com base na data e turno.
     navigate('/apontamentos/injetora/horaria', { state: { initialData: formData } });
   };
 
@@ -85,26 +80,26 @@ export default function ApontamentosInjetoraInicial() {
   return (
     <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
       <Typography variant="h4" gutterBottom>
-        Apontamento de Injetora (Dados Iniciais)
+        Apontamento de Injetora
       </Typography>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
         <Grid container spacing={3}>
-          {}
+          {/* Tipo de Injetora */}
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required>
-              <InputLabel id="tipo-injetora-label">Tipo de Injetora</InputLabel>
+            <FormControl fullWidth required variant="outlined">
+              <InputLabel id="tipo-injetora-label" shrink={true}>Tipo de Injetora</InputLabel> {/* Reintroduzido InputLabel com shrink */}
               <Select
                 labelId="tipo-injetora-label"
                 name="tipoInjetora"
                 value={formData.tipoInjetora}
-                label="Tipo de Injetora"
+                label="Tipo de Injetora" // Mantém o label para compatibilidade
                 onChange={handleChange}
-                displayEmpty 
+                displayEmpty // Permite que o MenuItem vazio seja o placeholder
               >
-                <MenuItem value="">Tipo de Injetora</MenuItem> {}
+                <MenuItem value="">Selecione o Tipo de Injetora</MenuItem>
                 <MenuItem value="200">200</MenuItem>
                 <MenuItem value="250">250</MenuItem>
                 <MenuItem value="300">300</MenuItem>
@@ -113,10 +108,10 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {}
+          {/* Máquina */}
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required>
-              <InputLabel id="maquina-label">Máquina</InputLabel>
+            <FormControl fullWidth required variant="outlined">
+              <InputLabel id="maquina-label" shrink={true}>Máquina</InputLabel> {/* Reintroduzido InputLabel com shrink */}
               <Select
                 labelId="maquina-label"
                 name="maquina"
@@ -126,7 +121,7 @@ export default function ApontamentosInjetoraInicial() {
                 disabled={!formData.tipoInjetora}
                 displayEmpty
               >
-                <MenuItem value="">Máquina</MenuItem>
+                <MenuItem value="">Selecione a Máquina</MenuItem>
                 {maquinasFiltradas.map((maq) => (
                   <MenuItem key={maq.nome_maquina} value={maq.nome_maquina}>
                     {maq.nome_maquina}
@@ -136,10 +131,10 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {}
+          {/* Turno */}
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required>
-              <InputLabel id="turno-label">Turno</InputLabel>
+            <FormControl fullWidth required variant="outlined">
+              <InputLabel id="turno-label" shrink={true}>Turno</InputLabel> {/* Reintroduzido InputLabel com shrink */}
               <Select
                 labelId="turno-label"
                 name="turno"
@@ -148,17 +143,17 @@ export default function ApontamentosInjetoraInicial() {
                 onChange={handleChange}
                 displayEmpty
               >
-                <MenuItem value="">Turno</MenuItem>
+                <MenuItem value="">Selecione o Turno</MenuItem>
                 <MenuItem value="Manha">Manhã (07:00 - 18:00)</MenuItem>
                 <MenuItem value="Noite">Noite (18:00 - 07:00)</MenuItem>
               </Select>
             </FormControl>
           </Grid>
 
-          {}
+          {/* Funcionário */}
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required>
-              <InputLabel id="funcionario-label">Funcionário</InputLabel>
+            <FormControl fullWidth required variant="outlined">
+              <InputLabel id="funcionario-label" shrink={true}>Funcionário</InputLabel> {/* Reintroduzido InputLabel com shrink */}
               <Select
                 labelId="funcionario-label"
                 name="funcionario"
@@ -167,7 +162,7 @@ export default function ApontamentosInjetoraInicial() {
                 onChange={handleChange}
                 displayEmpty
               >
-                <MenuItem value="">Funcionário</MenuItem>
+                <MenuItem value="">Selecione o Funcionário</MenuItem>
                 {funcionarios.map((func) => (
                   <MenuItem key={func.nome_completo} value={func.nome_completo}>
                     {func.nome_completo}
@@ -177,10 +172,10 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {}
+          {/* Peça */}
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required>
-              <InputLabel id="peca-label">Peça</InputLabel>
+            <FormControl fullWidth required variant="outlined">
+              <InputLabel id="peca-label" shrink={true}>Peça</InputLabel> {/* Reintroduzido InputLabel com shrink */}
               <Select
                 labelId="peca-label"
                 name="peca"
@@ -189,7 +184,7 @@ export default function ApontamentosInjetoraInicial() {
                 onChange={handleChange}
                 displayEmpty
               >
-                <MenuItem value="">Peça</MenuItem>
+                <MenuItem value="">Selecione a Peça</MenuItem>
                 {pecas.map((p) => (
                   <MenuItem key={p.codigo_peca} value={p.codigo_peca}>
                     {p.descricao_peca} ({p.codigo_peca})
@@ -199,7 +194,7 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {}
+          {/* Data do Apontamento (Já está funcionando como você quer) */}
           <Grid item xs={12} sm={6}>
             <TextField
               label="Data do Apontamento"
@@ -215,22 +210,6 @@ export default function ApontamentosInjetoraInicial() {
             />
           </Grid>
 
-          {/* <<<<<<< REMOVIDO: Campo de Hora do Apontamento */}
-          {/* <Grid item xs={12} sm={6}>
-            <TextField
-              label="Hora do Apontamento"
-              type="time"
-              name="horaApontamento"
-              value={formData.horaApontamento}
-              onChange={handleTimeChange}
-              fullWidth
-              required
-              InputLabelProps={{
-                shrink: true, 
-              }}
-            />
-          </Grid> */}
-
           <Grid item xs={12}>
             <Button
               variant="contained"
@@ -238,7 +217,7 @@ export default function ApontamentosInjetoraInicial() {
               sx={{ py: 2 }}
               fullWidth
             >
-              Prosseguir para Apontamentos Horários
+              Prosseguir para Apontamentos
             </Button>
           </Grid>
         </Grid>
