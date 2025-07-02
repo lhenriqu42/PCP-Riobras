@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
     Box,
     Typography,
@@ -22,12 +22,13 @@ import axios from 'axios';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import moment from 'moment';
+import moment from 'moment'; // Keep moment import for other date usages
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
+import { useEffect, useCallback } from 'react'; // Added useEffect and useCallback if not present
 
 // Cores para o gráfico de pizza
 const COLORS = ['#00C49F', '#FF8042', '#0088FE']; // Conforme, Não Conforme, Dentro da Meta
@@ -78,8 +79,7 @@ function Row({ row }) {
                                     {row.details.map((detailRow, index) => (
                                         <TableRow key={detailRow.id || index}>
                                             <TableCell component="th" scope="row">
-                                                {/* LINHA AJUSTADA AQUI */}
-                                                {detailRow.hora_apontamento ? moment(detailRow.hora_apontamento).format('HH:mm') : 'N/A'}
+                                                {detailRow.hora_apontamento || 'N/A'}
                                             </TableCell>
                                             <TableCell>{detailRow.turno}</TableCell>
                                             <TableCell>{detailRow.maquina}</TableCell>
@@ -157,27 +157,39 @@ export default function DashboardInjetora() {
         let totalMetaProducao = 0;
 
         data.forEach(ap => {
-            const date = moment(ap.data_apontamento).format('YYYY-MM-DD');
+            // --- INÍCIO DA LÓGICA DE NORMALIZAÇÃO DA DATA DO TURNO ---
+            let referenceDate = moment(ap.data_apontamento);
+            const horaApontamento = moment(ap.hora_apontamento, 'HH:mm'); // Analisa a hora
+
+            // Se o turno for 'Noite' E a hora de apontamento for entre 00:00 e 06:00 (inclusive 06:00 para o término do turno)
+            // Isso assume que o turno da noite começa às 18:00 e termina às 06:00 do dia seguinte.
+            // Ajustado para isBefore '06:01' para incluir 06:00.
+            if (ap.turno === 'Noite' && horaApontamento.isBefore(moment('06:01', 'HH:mm'))) { 
+                referenceDate = referenceDate.subtract(1, 'days'); // Considera como parte do dia anterior
+            }
+            // --- FIM DA LÓGICA DE NORMALIZAÇÃO DA DATA DO TURNO ---
+
+            const dateKey = referenceDate.format('YYYY-MM-DD'); // Usa a data de referência normalizada
             const peca = ap.peca;
 
-            if (!dailyAggregates[date]) {
-                dailyAggregates[date] = {
-                    date: date,
+            if (!dailyAggregates[dateKey]) {
+                dailyAggregates[dateKey] = {
+                    date: dateKey,
                     quantidadeInjetada: 0,
                     pecasNC: 0,
                     quantidadeEfetiva: 0,
                     meta: currentMeta
                 };
             }
-            dailyAggregates[date].quantidadeInjetada += ap.quantidade_injetada;
-            dailyAggregates[date].pecasNC += ap.pecas_nc;
-            dailyAggregates[date].quantidadeEfetiva += ap.quantidade_efetiva;
+            dailyAggregates[dateKey].quantidadeInjetada += ap.quantidade_injetada;
+            dailyAggregates[dateKey].pecasNC += ap.pecas_nc;
+            dailyAggregates[dateKey].quantidadeEfetiva += ap.quantidade_efetiva;
 
-            const key = `${peca}_${date}`;
+            const key = `${peca}_${dateKey}`; // Usa a data de referência normalizada
             if (!productDateAggregates[key]) {
                 productDateAggregates[key] = {
                     peca: peca,
-                    data: date,
+                    data: dateKey, // A data aqui é o "dia de início" do turno para o agrupamento
                     totalInjetada: 0,
                     totalNC: 0,
                     totalEfetiva: 0,
@@ -187,6 +199,9 @@ export default function DashboardInjetora() {
             productDateAggregates[key].totalInjetada += ap.quantidade_injetada;
             productDateAggregates[key].totalNC += ap.pecas_nc;
             productDateAggregates[key].totalEfetiva += ap.quantidade_efetiva;
+
+            // Ao adicionar os detalhes, é crucial que os detalhes do apontamento em si
+            // (como ap.hora_apontamento) sejam mantidos como estão, para serem exibidos corretamente.
             productDateAggregates[key].details.push(ap);
 
             totalPecasConformes += (ap.quantidade_injetada - ap.pecas_nc);
@@ -197,14 +212,49 @@ export default function DashboardInjetora() {
         const numDays = endDate.diff(startDate, 'days') + 1;
         totalMetaProducao = currentMeta * numDays;
 
+        // Ordenar dailyProductionData pelo 'date'
         const sortedDailyData = Object.values(dailyAggregates).sort((a, b) => moment(a.date).diff(moment(b.date)));
         setDailyProductionData(sortedDailyData);
 
+        // Ordenar productDateAggregates pelo 'data' (dia de referência do turno) e depois pela peça
         const sortedProductDateData = Object.values(productDateAggregates).sort((a, b) => {
             const dateComparison = moment(a.data).diff(moment(b.data));
             if (dateComparison !== 0) return dateComparison;
             return a.peca.localeCompare(b.peca);
         });
+
+        // IMPORTANTE: Ordenar os 'details' dentro de cada grupo
+        sortedProductDateData.forEach(group => {
+            group.details.sort((a, b) => {
+                const horaA = moment(a.hora_apontamento, 'HH:mm');
+                const horaB = moment(b.hora_apontamento, 'HH:mm');
+
+                let sortValueA = horaA.hour() * 60 + horaA.minute(); // Valor em minutos desde 00:00
+                let sortValueB = horaB.hour() * 60 + horaB.minute();
+
+                // Se o apontamento for do turno da noite E a hora for entre 00:00 e 06:59 (inclusive 06:59),
+                // adicione 24 horas (em minutos) para que ele seja ordenado APÓS as horas do dia anterior (18:00-23:59).
+                // Isso cria uma ordem cronológica contínua para o turno da noite (e dia de produção).
+                if (a.turno === 'Noite' && horaA.isBetween(moment('00:00', 'HH:mm'), moment('06:59', 'HH:mm'), null, '[]')) {
+                    sortValueA += 24 * 60;
+                }
+                if (b.turno === 'Noite' && horaB.isBetween(moment('00:00', 'HH:mm'), moment('06:59', 'HH:mm'), null, '[]')) {
+                    sortValueB += 24 * 60;
+                }
+
+                // Para garantir que os turnos da manhã/tarde (que não atravessam a noite)
+                // venham antes dos turnos da noite se tiverem a mesma hora de início conceitual (o que não deve acontecer, mas por segurança)
+                if (a.turno === 'Manha' || a.turno === 'Tarde') { // Assumindo "Tarde" existe, se não, adapte
+                    sortValueA -= 0.5; // Pequeno ajuste para garantir que venha antes do "Noite" se houver alguma sobreposição estranha de hora conceitual
+                }
+                if (b.turno === 'Manha' || b.turno === 'Tarde') {
+                    sortValueB -= 0.5;
+                }
+
+                return sortValueA - sortValueB;
+            });
+        });
+
         setAggregatedData(sortedProductDateData);
 
         const totalPecas = totalPecasConformes + totalPecasNC;
@@ -222,7 +272,7 @@ export default function DashboardInjetora() {
             { name: 'Peças Não Conformes', value: percentNC },
             { name: 'Produção vs. Meta (%)', value: finalPercentDentroMeta },
         ]);
-    }, [startDate, endDate]);
+    }, [startDate, endDate]); // Dependências da useCallback
 
     useEffect(() => {
         const handleApplyFilters = async () => {
