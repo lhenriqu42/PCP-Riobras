@@ -42,6 +42,8 @@ if (!jwtSecret) {
     process.exit(1);
 }
 
+console.log('Valor de JWT_SECRET carregado:', process.env.JWT_SECRET);
+
 //JWT
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -188,15 +190,13 @@ app.get('/api/data/lists', async (req, res) => {
     }
 });
 
-// Rota para registrar apontamentos de injetora
 app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => { 
-    // **DEBUG: LOG DO PAYLOAD COMPLETO (ANTES DA DESESTRUTURAÇÃO)**
     console.log('Payload recebido no backend para /api/apontamentos/injetora:', req.body);
 
     const {
         tipoInjetora,
         dataApontamento,
-        hora_apontamento, // <--- CORRIGIDO AQUI: USANDO 'hora_apontamento' (snake_case)
+        hora_apontamento,
         turno,
         maquina,
         funcionario,
@@ -207,14 +207,7 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
         tipo_registro
     } = req.body;
 
-    // **DEBUG: LOG ESPECÍFICO DE HORA_APONTAMENTO (APÓS A DESESTRUTURAÇÃO)**
-    console.log('Valor de hora_apontamento recebido (após desestruturação):', hora_apontamento);
-
-    // Se você quiser que apenas nível 1 possa criar apontamentos, adicione:
-    // if (!req.user || req.user.level !== 1) {
-    //     return res.status(403).json({ message: 'Acesso negado. Você não tem permissão para registrar apontamentos.' });
-    // }
-
+    console.log('Valor de hora_apontamento recebido:', hora_apontamento);
     const quantidade_efetiva = quantidade_injetada - pecas_nc;
 
     try {
@@ -224,7 +217,7 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
                 {
                     tipo_injetora: tipoInjetora,
                     data_apontamento: dataApontamento,
-                    hora_apontamento: hora_apontamento, // <--- USANDO A VARIÁVEL CORRETA AQUI
+                    hora_apontamento: hora_apontamento, 
                     turno: turno,
                     maquina: maquina,
                     funcionario: funcionario,
@@ -240,7 +233,6 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
 
         if (error) {
             console.error('Erro Supabase ao inserir:', error);
-            // Melhora a mensagem de erro para incluir mais detalhes do Supabase
             return res.status(500).json({
                 message: 'Erro ao inserir apontamento.',
                 details: error.message || error.details || error.hint || error.code || 'Detalhes desconhecidos.',
@@ -257,7 +249,6 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
 //rota tela não conformidades:
 app.get('/api/produtos/taxa-nc', authenticateToken, async (req, res) => {
     try {
-        // Acessa os dados de apontamentos_injetora
         const { data: apontamentos, error } = await supabase
             .from('apontamentos_injetora')
             .select('peca, quantidade_injetada, pecas_nc');
@@ -269,8 +260,6 @@ app.get('/api/produtos/taxa-nc', authenticateToken, async (req, res) => {
                 details: error.message || error.details || error.hint || error.code || 'Detalhes desconhecidos.',
             });
         }
-
-        // Agrupar e calcular totais por peça
         const produtosData = apontamentos.reduce((acc, apontamento) => {
             const { peca, quantidade_injetada, pecas_nc } = apontamento;
             if (!acc[peca]) {
@@ -281,7 +270,7 @@ app.get('/api/produtos/taxa-nc', authenticateToken, async (req, res) => {
             return acc;
         }, {});
 
-        // Calcular a taxa de não conformidade para cada produto
+        //calcular a taxa de nc por produto
         const resultados = Object.keys(produtosData).map(peca => {
             const { totalInjetado, totalPecasNC } = produtosData[peca];
             const taxaNC = totalInjetado > 0 ? (totalPecasNC / totalInjetado) * 100 : 0;

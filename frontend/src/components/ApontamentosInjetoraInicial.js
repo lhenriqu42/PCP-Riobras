@@ -9,7 +9,8 @@ import {
   FormControl,
   InputLabel,
   Select,
-  Alert
+  Alert,
+  Autocomplete // Importar Autocomplete
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -21,8 +22,8 @@ export default function ApontamentosInjetoraInicial() {
     dataApontamento: '',
     turno: '',
     maquina: '',
-    funcionario: '',
-    peca: '',
+    funcionario: null, 
+    peca: null,      
   });
   const [error, setError] = useState('');
   const [maquinas, setMaquinas] = useState([]);
@@ -34,6 +35,9 @@ export default function ApontamentosInjetoraInicial() {
       try {
         const response = await axios.get('http://localhost:3001/api/data/lists');
         setMaquinas(response.data.maquinas || []);
+        // Assumindo que funcionarios e pecas já vêm no formato desejado
+        // Ex: { id: 1, nome_completo: "João Silva" }
+        // Ex: { id: 1, codigo_peca: "P001", descricao_peca: "Parafuso M8" }
         setFuncionarios(response.data.funcionarios || []);
         setPecas(response.data.pecas || []);
       } catch (err) {
@@ -52,6 +56,13 @@ export default function ApontamentosInjetoraInicial() {
     }));
   };
 
+  const handleAutocompleteChange = (name) => (event, value) => {
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value, // value será o objeto selecionado (ex: { id: 1, nome_completo: "João Silva" })
+    }));
+  };
+
   const handleDateChange = (e) => {
     setFormData((prevData) => ({
       ...prevData,
@@ -63,14 +74,23 @@ export default function ApontamentosInjetoraInicial() {
     e.preventDefault();
     setError('');
 
+    // Agora verificamos se os objetos funcionario e peca existem
     if (!formData.tipoInjetora || !formData.dataApontamento ||
         !formData.turno || !formData.maquina || !formData.funcionario || !formData.peca) {
       setError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
-    console.log('Dados iniciais submetidos:', formData);
-    navigate('/apontamentos/injetora/horaria', { state: { initialData: formData } });
+    // Ao passar para a próxima tela, você pode querer passar o ID ou o código, não o objeto completo
+    // Ajuste aqui conforme o que ApontamentosInjetoraHoraria espera
+    const initialDataToSend = {
+      ...formData,
+      funcionario: formData.funcionario.nome_completo, // Ou formData.funcionario.id
+      peca: formData.peca.codigo_peca,                 // Ou formData.peca.id
+    };
+
+    console.log('Dados iniciais submetidos:', initialDataToSend);
+    navigate('/apontamentos/injetora/horaria', { state: { initialData: initialDataToSend } });
   };
 
   const maquinasFiltradas = formData.tipoInjetora
@@ -87,17 +107,17 @@ export default function ApontamentosInjetoraInicial() {
 
       <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
         <Grid container spacing={3}>
-          {/* Tipo de Injetora */}
+          {/* tipo de injetora */}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required variant="outlined">
-              <InputLabel id="tipo-injetora-label" shrink={true}>Tipo de Injetora</InputLabel> {/* Reintroduzido InputLabel com shrink */}
+              <InputLabel id="tipo-injetora-label" shrink={true}>Tipo de Injetora</InputLabel>
               <Select
                 labelId="tipo-injetora-label"
                 name="tipoInjetora"
                 value={formData.tipoInjetora}
-                label="Tipo de Injetora" // Mantém o label para compatibilidade
+                label="Tipo de Injetora"
                 onChange={handleChange}
-                displayEmpty // Permite que o MenuItem vazio seja o placeholder
+                displayEmpty
               >
                 <MenuItem value="">Selecione o Tipo de Injetora</MenuItem>
                 <MenuItem value="200">200</MenuItem>
@@ -108,10 +128,10 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {/* Máquina */}
+          {/*maquina*/}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required variant="outlined">
-              <InputLabel id="maquina-label" shrink={true}>Máquina</InputLabel> {/* Reintroduzido InputLabel com shrink */}
+              <InputLabel id="maquina-label" shrink={true}>Máquina</InputLabel>
               <Select
                 labelId="maquina-label"
                 name="maquina"
@@ -134,7 +154,7 @@ export default function ApontamentosInjetoraInicial() {
           {/* Turno */}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required variant="outlined">
-              <InputLabel id="turno-label" shrink={true}>Turno</InputLabel> {/* Reintroduzido InputLabel com shrink */}
+              <InputLabel id="turno-label" shrink={true}>Turno</InputLabel>
               <Select
                 labelId="turno-label"
                 name="turno"
@@ -150,51 +170,57 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {/* Funcionário */}
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required variant="outlined">
-              <InputLabel id="funcionario-label" shrink={true}>Funcionário</InputLabel> {/* Reintroduzido InputLabel com shrink */}
-              <Select
-                labelId="funcionario-label"
-                name="funcionario"
-                value={formData.funcionario}
-                label="Funcionário"
-                onChange={handleChange}
-                displayEmpty
-              >
-                <MenuItem value="">Selecione o Funcionário</MenuItem>
-                {funcionarios.map((func) => (
-                  <MenuItem key={func.nome_completo} value={func.nome_completo}>
-                    {func.nome_completo}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          {/* Funcionário - AGORA USANDO AUTOCOMPLETE */}
+          <Grid item xs={12} sm={10}>
+            <Autocomplete
+              id="funcionario-autocomplete"
+              options={funcionarios}
+              getOptionLabel={(option) => option.nome_completo || ''} // Como exibir a opção
+              value={formData.funcionario} // O valor selecionado (o objeto completo)
+              onChange={handleAutocompleteChange('funcionario')}
+              isOptionEqualToValue={(option, value) => option.id === value.id} // Como comparar opções
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Funcionário"
+                  variant="outlined"
+                  required
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  error={!!error && !formData.funcionario} // Exibe erro se campo obrigatório e não preenchido
+                  helperText={!!error && !formData.funcionario ? "Campo obrigatório" : ""}
+                />
+              )}
+              noOptionsText="Nenhum funcionário encontrado"
+            />
           </Grid>
 
-          {/* Peça */}
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required variant="outlined">
-              <InputLabel id="peca-label" shrink={true}>Peça</InputLabel> {/* Reintroduzido InputLabel com shrink */}
-              <Select
-                labelId="peca-label"
-                name="peca"
-                value={formData.peca}
-                label="Peça"
-                onChange={handleChange}
-                displayEmpty
-              >
-                <MenuItem value="">Selecione a Peça</MenuItem>
-                {pecas.map((p) => (
-                  <MenuItem key={p.codigo_peca} value={p.codigo_peca}>
-                    {p.descricao_peca} ({p.codigo_peca})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          {/* Peça - AGORA USANDO AUTOCOMPLETE */}
+          <Grid item xs={12} sm={10}>
+            <Autocomplete
+              id="peca-autocomplete"
+              options={pecas}
+              getOptionLabel={(option) => `${option.descricao_peca} (${option.codigo_peca})` || ''} // Como exibir a opção
+              value={formData.peca} // O valor selecionado (o objeto completo)
+              onChange={handleAutocompleteChange('peca')}
+              isOptionEqualToValue={(option, value) => option.id === value.id} // Como comparar opções
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Peça"
+                  variant="outlined"
+                  required
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  error={!!error && !formData.peca} // Exibe erro se campo obrigatório e não preenchido
+                  helperText={!!error && !formData.peca ? "Campo obrigatório" : ""}
+                />
+              )}
+              noOptionsText="Nenhuma peça encontrada"
+            />
           </Grid>
 
-          {/* Data do Apontamento (Já está funcionando como você quer) */}
+          {/* Data do Apontamento */}
           <Grid item xs={12} sm={6}>
             <TextField
               label="Data do Apontamento"

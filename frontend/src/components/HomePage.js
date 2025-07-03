@@ -1,26 +1,10 @@
-// src/components/HomePage.js
-import React from 'react'; // Remova useState, useEffect, useCallback, CircularProgress, Alert
-import { Box, Typography, Button, Paper, Grid } from '@mui/material'; // Remova CircularProgress, Alert
+import React from 'react'; 
+import { Box, Typography, Button, Paper, Grid } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-// Remova todas as importações do Recharts
-// import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../context/AuthContext';
-// Remova axios
-
-// Remova COLORS
-
 function HomePage() {
     const { user } = useAuth();
     const navigate = useNavigate();
-
-    // Remova todos os estados e useEffect relacionados ao pie chart
-    // const [pieChartData, setPieChartData] = useState([]);
-    // const [loadingPieChart, setLoadingPieChart] = useState(true);
-    // const [errorPieChart, setErrorPieChart] = useState('');
-
-    // Remova fetchAndProcessPieChartData e seu useCallback
-    // Remova CustomTooltip
-
     return (
         <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
             <Typography variant="h4" component="h1" gutterBottom>
@@ -33,7 +17,6 @@ function HomePage() {
                 </Typography>
 
                 <Box justifyContent="center" display={'flex'} flexDirection={'column'} px={10}>
-                    {/* Card de Navegação - Dashboard */}
                     <Box>
                         <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
                             <Typography variant="h6" color="primary" gutterBottom>
@@ -53,7 +36,7 @@ function HomePage() {
                         </Paper>
                     </Box>
 
-                    {/* Card de Navegação - Apontamentos */}
+                  
                     <Box>
                         <Paper variant="outlined" sx={{ p: 1.5, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
                             <Typography variant="h6" color="secondary" gutterBottom>
@@ -72,8 +55,8 @@ function HomePage() {
                         </Paper>
                     </Box>
 
-                    {/* REMOVIDO: Antigo Card do Gráfico de Pizza */}
-                    {/* <Grid item xs={12} md={4}>...</Grid> */}
+                   
+                  
                 </Box>
             </Paper>
         </Box>
