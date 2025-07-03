@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'; // Importar useRef
+import React, { useState, useEffect, useRef } from 'react'; 
 import {
   Box,
   Typography,
@@ -45,7 +45,6 @@ export default function ApontamentosInjetoraHoraria() {
       setTimeout(() => navigate('/apontamentos/injetora/inicial'), 3000);
       return;
     }
-    // <<<<<<< ALTERAÇÃO: Remove initialData.horaApontamento da chamada
     generateHourlyEntries(initialData);
   }, [initialData, navigate]);
 
@@ -56,18 +55,15 @@ export default function ApontamentosInjetoraHoraria() {
   }, [currentHourIndex]);
 
   const generateHourlyEntries = (data) => {
-    // <<<<<<< ALTERAÇÃO: Remove horaApontamento do desestruturação
     const { dataApontamento, turno } = data;
     const entries = [];
     let startMoment;
     let endMoment;
 
     if (turno === 'Manha') {
-      // Turno da manhã começa às 07:00 e termina às 18:00
       startMoment = moment(dataApontamento + ' 07:00', 'YYYY-MM-DD HH:mm');
       endMoment = moment(dataApontamento + ' 18:00', 'YYYY-MM-DD HH:mm');
     } else {
-      // Turno da noite começa às 18:00 do dia do apontamento e termina às 07:00 do dia seguinte
       startMoment = moment(dataApontamento + ' 18:00', 'YYYY-MM-DD HH:mm');
       endMoment = moment(dataApontamento, 'YYYY-MM-DD').add(1, 'days').set({ hour: 7, minute: 0 });
     }
@@ -113,9 +109,8 @@ export default function ApontamentosInjetoraHoraria() {
     }
 
     const payload = {
-      // <<<<<<< ALTERAÇÃO: initialData não tem mais horaApontamento
       ...initialData,
-      hora_apontamento: currentEntry.hora, // Esta hora é a hora do apontamento horário, gerada localmente
+      hora_apontamento: currentEntry.hora,
       quantidade_injetada: currentEntry.quantidade_injetada,
       pecas_nc: currentEntry.pecas_nc,
       observacoes: currentEntry.observacoes,
@@ -176,18 +171,12 @@ export default function ApontamentosInjetoraHoraria() {
     setError('');
     setSuccess('');
 
-    // Garante que o apontamento atual seja salvo antes de encerrar os restantes
     const finishRemainingHours = async () => {
         const updatedApontamentos = [...apontamentosHorarios];
         for (let i = currentHourIndex; i < updatedApontamentos.length; i++) {
-            // Se o apontamento atual não foi finalizado, finalize-o
             if (!updatedApontamentos[i].finalizado) {
-                // Faça a chamada para o backend para o apontamento atual (se não foi feito)
-                // Se o currentHourIndex já estiver no último ou se já estiver finalizado,
-                // apenas continue marcando os restantes como finalizados sem uma nova chamada ao backend.
                 if (i === currentHourIndex && updatedApontamentos[i].tipo_registro === 'producao' &&
                     (updatedApontamentos[i].quantidade_injetada !== '' || updatedApontamentos[i].pecas_nc !== '')) {
-                    // Tente registrar o apontamento atual se houver dados e não estiver finalizado
                     const currentPayload = {
                         ...initialData,
                         hora_apontamento: updatedApontamentos[i].hora,
@@ -199,16 +188,15 @@ export default function ApontamentosInjetoraHoraria() {
                     try {
                         await axios.post('http://localhost:3001/api/apontamentos/injetora', currentPayload);
                         updatedApontamentos[i].finalizado = true;
-                        setApontamentosHorarios([...updatedApontamentos]); // Atualiza o estado para refletir a finalização
+                        setApontamentosHorarios([...updatedApontamentos]); 
                     } catch (err) {
                         console.error('Erro ao registrar o apontamento atual ao encerrar:', err);
                         setError('Erro ao registrar o apontamento atual. Operação não encerrada.');
                         setLoading(false);
-                        return; // Aborta se o apontamento atual falhar
+                        return; 
                     }
                 } else if (i === currentHourIndex && updatedApontamentos[i].tipo_registro === 'producao' &&
                     updatedApontamentos[i].quantidade_injetada === '' && updatedApontamentos[i].pecas_nc === '') {
-                    // Se o campo atual de produção está vazio, registre-o como 'finalizado' com 0s
                     const currentPayload = {
                         ...initialData,
                         hora_apontamento: updatedApontamentos[i].hora,
@@ -233,7 +221,6 @@ export default function ApontamentosInjetoraHoraria() {
                     }
                 }
             }
-            // Para as horas restantes (após a atual), marque como 'finalizado' e envie.
             if (!updatedApontamentos[i].finalizado) {
                 const payloadRemaining = {
                     ...initialData,
@@ -250,11 +237,10 @@ export default function ApontamentosInjetoraHoraria() {
                     updatedApontamentos[i].quantidade_injetada = 0;
                     updatedApontamentos[i].pecas_nc = 0;
                     updatedApontamentos[i].observacoes = 'Operação encerrada antes do horário';
-                    setApontamentosHorarios([...updatedApontamentos]); // Atualiza o estado a cada envio para feedback visual
+                    setApontamentosHorarios([...updatedApontamentos]);
                 } catch (err) {
                     console.error(`Erro ao registrar hora ${updatedApontamentos[i].hora} como finalizada:`, err);
                     setError(`Erro ao registrar algumas horas como finalizadas.`);
-                    // Continua a tentar os próximos, mas mantém o erro
                 }
             }
         }
@@ -273,9 +259,6 @@ export default function ApontamentosInjetoraHoraria() {
       if (fieldName === 'pecas_nc' || fieldName === 'quantidade_injetada') {
         handleRegisterHour(index);
       } else {
-        // teste para proximo campo ao apertar enter:
-        // const nextField = e.target.form.elements[e.target.tabIndex + 1];
-        // if (nextField) nextField.focus();
       }
     }
   };
@@ -337,12 +320,8 @@ export default function ApontamentosInjetoraHoraria() {
               **Turno:** {initialData.turno}
             </Typography>
           </Grid>
-          {/* <<<<<<< REMOVIDO: Exibição da Hora do Apontamento inicial */}
-          {/* <Grid item xs={6} sm={3}>
-            <Typography variant="body1">
-              **Hora (Início):** {initialData.horaApontamento}
-            </Typography>
-          </Grid> */}
+          {}
+          {}
         </Grid>
       </Paper>
 

@@ -10,7 +10,7 @@ import {
   InputLabel,
   Select,
   Alert,
-  Autocomplete // Importar Autocomplete
+  Autocomplete 
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -35,9 +35,6 @@ export default function ApontamentosInjetoraInicial() {
       try {
         const response = await axios.get('http://localhost:3001/api/data/lists');
         setMaquinas(response.data.maquinas || []);
-        // Assumindo que funcionarios e pecas já vêm no formato desejado
-        // Ex: { id: 1, nome_completo: "João Silva" }
-        // Ex: { id: 1, codigo_peca: "P001", descricao_peca: "Parafuso M8" }
         setFuncionarios(response.data.funcionarios || []);
         setPecas(response.data.pecas || []);
       } catch (err) {
@@ -59,7 +56,7 @@ export default function ApontamentosInjetoraInicial() {
   const handleAutocompleteChange = (name) => (event, value) => {
     setFormData((prevData) => ({
       ...prevData,
-      [name]: value, // value será o objeto selecionado (ex: { id: 1, nome_completo: "João Silva" })
+      [name]: value, 
     }));
   };
 
@@ -74,19 +71,16 @@ export default function ApontamentosInjetoraInicial() {
     e.preventDefault();
     setError('');
 
-    // Agora verificamos se os objetos funcionario e peca existem
     if (!formData.tipoInjetora || !formData.dataApontamento ||
         !formData.turno || !formData.maquina || !formData.funcionario || !formData.peca) {
       setError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
-    // Ao passar para a próxima tela, você pode querer passar o ID ou o código, não o objeto completo
-    // Ajuste aqui conforme o que ApontamentosInjetoraHoraria espera
     const initialDataToSend = {
       ...formData,
-      funcionario: formData.funcionario.nome_completo, // Ou formData.funcionario.id
-      peca: formData.peca.codigo_peca,                 // Ou formData.peca.id
+      funcionario: formData.funcionario.nome_completo, 
+      peca: formData.peca.codigo_peca,                 
     };
 
     console.log('Dados iniciais submetidos:', initialDataToSend);
@@ -107,7 +101,7 @@ export default function ApontamentosInjetoraInicial() {
 
       <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
         <Grid container spacing={3}>
-          {/* tipo de injetora */}
+          {}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required variant="outlined">
               <InputLabel id="tipo-injetora-label" shrink={true}>Tipo de Injetora</InputLabel>
@@ -128,7 +122,7 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {/*maquina*/}
+          {}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required variant="outlined">
               <InputLabel id="maquina-label" shrink={true}>Máquina</InputLabel>
@@ -170,15 +164,15 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {/* Funcionário - AGORA USANDO AUTOCOMPLETE */}
+          {}
           <Grid item xs={12} sm={10}>
             <Autocomplete
               id="funcionario-autocomplete"
               options={funcionarios}
-              getOptionLabel={(option) => option.nome_completo || ''} // Como exibir a opção
-              value={formData.funcionario} // O valor selecionado (o objeto completo)
+              getOptionLabel={(option) => option.nome_completo || ''} 
+              value={formData.funcionario} 
               onChange={handleAutocompleteChange('funcionario')}
-              isOptionEqualToValue={(option, value) => option.id === value.id} // Como comparar opções
+              isOptionEqualToValue={(option, value) => option.id === value.id} 
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -187,7 +181,7 @@ export default function ApontamentosInjetoraInicial() {
                   required
                   fullWidth
                   InputLabelProps={{ shrink: true }}
-                  error={!!error && !formData.funcionario} // Exibe erro se campo obrigatório e não preenchido
+                  error={!!error && !formData.funcionario} 
                   helperText={!!error && !formData.funcionario ? "Campo obrigatório" : ""}
                 />
               )}
@@ -195,15 +189,15 @@ export default function ApontamentosInjetoraInicial() {
             />
           </Grid>
 
-          {/* Peça - AGORA USANDO AUTOCOMPLETE */}
+          {}
           <Grid item xs={12} sm={10}>
             <Autocomplete
               id="peca-autocomplete"
               options={pecas}
-              getOptionLabel={(option) => `${option.descricao_peca} (${option.codigo_peca})` || ''} // Como exibir a opção
-              value={formData.peca} // O valor selecionado (o objeto completo)
+              getOptionLabel={(option) => `${option.descricao_peca} (${option.codigo_peca})` || ''} 
+              value={formData.peca} 
               onChange={handleAutocompleteChange('peca')}
-              isOptionEqualToValue={(option, value) => option.id === value.id} // Como comparar opções
+              isOptionEqualToValue={(option, value) => option.id === value.id}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -212,7 +206,7 @@ export default function ApontamentosInjetoraInicial() {
                   required
                   fullWidth
                   InputLabelProps={{ shrink: true }}
-                  error={!!error && !formData.peca} // Exibe erro se campo obrigatório e não preenchido
+                  error={!!error && !formData.peca} 
                   helperText={!!error && !formData.peca ? "Campo obrigatório" : ""}
                 />
               )}
@@ -220,7 +214,7 @@ export default function ApontamentosInjetoraInicial() {
             />
           </Grid>
 
-          {/* Data do Apontamento */}
+          {}
           <Grid item xs={12} sm={6}>
             <TextField
               label="Data do Apontamento"

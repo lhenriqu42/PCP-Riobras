@@ -29,7 +29,6 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useEffect, useCallback } from 'react';
 
-// Componente Row agora recebe a linha agrupada
 function Row({ row }) {
     const [open, setOpen] = useState(false);
 
@@ -124,7 +123,6 @@ export default function DashboardInjetora() {
 
     const canEditMeta = user?.level === 2;
 
-    // Função para processar os apontamentos para o dashboard (gráficos e tabela)
     const processApontamentosForDashboard = useCallback((data, currentMeta) => {
         const dailyAggregates = {};
         const tableAggregates = {};
@@ -132,23 +130,20 @@ export default function DashboardInjetora() {
         data.forEach(ap => {
             const dateKey = moment(ap.data_apontamento).format('YYYY-MM-DD');
 
-            // --- Lógica para o Gráfico Diário ---
             if (!dailyAggregates[dateKey]) {
                 dailyAggregates[dateKey] = {
                     date: dateKey,
                     quantidadeInjetada: 0,
                     pecasNC: 0,
                     quantidadeEfetiva: 0,
-                    meta: Number(currentMeta) // Garante que a meta seja um número
+                    meta: Number(currentMeta) 
                 };
             }
-            // Garante que os valores sejam números, tratando possíveis null/undefined/string
+
             dailyAggregates[dateKey].quantidadeInjetada += Number(ap.quantidade_injetada || 0);
             dailyAggregates[dateKey].pecasNC += Number(ap.pecas_nc || 0);
             dailyAggregates[dateKey].quantidadeEfetiva += Number(ap.quantidade_efetiva || 0);
-            // --- Fim da Lógica para o Gráfico Diário ---
 
-            // --- Lógica para a Tabela Principal (agrupando por Peça, Data, Turno, Funcionário, Máquina) ---
             const tableGroupKey = `${ap.peca}_${dateKey}_${ap.turno}_${ap.funcionario}_${ap.maquina}`;
 
             if (!tableAggregates[tableGroupKey]) {
@@ -167,13 +162,11 @@ export default function DashboardInjetora() {
             tableAggregates[tableGroupKey].totalEfetiva += Number(ap.quantidade_efetiva || 0);
             tableAggregates[tableGroupKey].totalNC += Number(ap.pecas_nc || 0);
             tableAggregates[tableGroupKey].details.push(ap);
-            // --- Fim da Lógica para a Tabela Principal ---
         });
 
         const sortedDailyData = Object.values(dailyAggregates).sort((a, b) => moment(a.date).diff(moment(b.date)));
         setDailyProductionData(sortedDailyData);
 
-        // Adiciona um log para inspecionar os dados do gráfico
         console.log("Dados para o Gráfico Diário:", sortedDailyData);
 
         const sortedTableData = Object.values(tableAggregates).sort((a, b) => {
@@ -246,8 +239,8 @@ export default function DashboardInjetora() {
                 setMaquinasList(uniqueTiposInjetora);
 
                 const metaResponse = await axios.get('http://localhost:3001/api/meta-producao');
-                setMetaProducao(Number(metaResponse.data.meta || 0)); // Garante que a meta seja um número
-                setNewMetaValue(Number(metaResponse.data.meta || 0)); // Garante que newMetaValue seja um número
+                setMetaProducao(Number(metaResponse.data.meta || 0)); 
+                setNewMetaValue(Number(metaResponse.data.meta || 0)); 
 
             } catch (err) {
                 console.error('Erro ao carregar dados iniciais:', err);
@@ -277,7 +270,7 @@ export default function DashboardInjetora() {
     };
 
     const handleNewMetaChange = (event) => {
-        setNewMetaValue(Number(event.target.value)); // Garante que o valor digitado é um número
+        setNewMetaValue(Number(event.target.value)); 
     };
 
     const handleSaveMeta = async () => {
@@ -445,7 +438,7 @@ export default function DashboardInjetora() {
                 </Paper>
 
                 <Grid container spacing={4}>
-                    {/* O Line Chart agora ocupa 12 colunas em md */}
+                    {}
                     <Grid item xs={12} md={12}>
                         <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
                             <Typography variant="h6" gutterBottom>
@@ -475,7 +468,7 @@ export default function DashboardInjetora() {
                         </Paper>
                     </Grid>
 
-                    {/* REMOVIDO: O Grid item que continha o Pie Chart */}
+                    {}
                 </Grid>
 
                 <Paper elevation={3} sx={{ p: 3, mt: 4 }}>

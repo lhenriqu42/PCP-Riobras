@@ -246,7 +246,6 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
     }
 });
 
-//rota tela não conformidades:
 app.get('/api/produtos/taxa-nc', authenticateToken, async (req, res) => {
     try {
         const { data: apontamentos, error } = await supabase
@@ -270,7 +269,6 @@ app.get('/api/produtos/taxa-nc', authenticateToken, async (req, res) => {
             return acc;
         }, {});
 
-        //calcular a taxa de nc por produto
         const resultados = Object.keys(produtosData).map(peca => {
             const { totalInjetado, totalPecasNC } = produtosData[peca];
             const taxaNC = totalInjetado > 0 ? (totalPecasNC / totalInjetado) * 100 : 0;
@@ -278,7 +276,7 @@ app.get('/api/produtos/taxa-nc', authenticateToken, async (req, res) => {
                 peca,
                 totalInjetado,
                 totalPecasNC,
-                taxaNC: parseFloat(taxaNC.toFixed(2)) // Arredonda para 2 casas decimais
+                taxaNC: parseFloat(taxaNC.toFixed(2)) 
             };
         });
 
@@ -290,8 +288,6 @@ app.get('/api/produtos/taxa-nc', authenticateToken, async (req, res) => {
     }
 });
 
-
-// Rota para buscar apontamentos com filtros
 app.get('/api/apontamentos/injetora', async (req, res) => {
     const { dataInicio, dataFim, peca, tipoInjetora, turno } = req.query;
 
@@ -332,7 +328,6 @@ app.get('/api/apontamentos/injetora', async (req, res) => {
     }
 });
 
+module.exports = app;
+;
 
-app.listen(port, () => {
-    console.log(`Backend rodando em http://localhost:${port}`);
-});

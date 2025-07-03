@@ -1,5 +1,3 @@
-// src/pages/ProductQualityDashboard.js
-
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
@@ -13,31 +11,29 @@ import {
   TableRow,
   CircularProgress,
   Alert,
-  Grid // Adicionado Grid para layout
+  Grid 
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-// Importações do Recharts
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 
-// Cores para o gráfico de pizza (iguais às da antiga HomePage)
-const COLORS = ['#00C49F', '#FF8042']; // Verde para Conformes, Laranja para Não Conformes
+const COLORS = ['#00C49F', '#FF8042']; 
 
 export default function ProductQualityDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [productData, setProductData] = useState([]); // Dados da tabela de produtos
-  const [pieChartData, setPieChartData] = useState([]); // Dados para o gráfico de pizza
+  const [productData, setProductData] = useState([]);
+  const [pieChartData, setPieChartData] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!authLoading) {
       if (!user || user.level < 2) {
-        navigate('/home', { replace: true }); // Use replace para evitar que o usuário volte para a página restrita
+        navigate('/home', { replace: true }); 
         return;
       }
     }
@@ -46,11 +42,9 @@ export default function ProductQualityDashboard() {
       setLoading(true);
       setError('');
       try {
-        // --- BUSCA DE DADOS PARA A TABELA DE TAXA NC ---
         const productsResponse = await axios.get('http://localhost:3001/api/produtos/taxa-nc');
         setProductData(productsResponse.data);
 
-        // --- BUSCA E PROCESSAMENTO DE DADOS PARA O GRÁFICO DE PIZZA (do antigo HomePage) ---
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const params = {
@@ -79,8 +73,7 @@ export default function ProductQualityDashboard() {
                 { name: 'Peças Não Conformes', value: totalPecasNC, percent: percentNC },
             ]);
         } else {
-            // Se não houver dados, exibe um placeholder no gráfico
-            setPieChartData([{ name: 'Nenhum dado disponível', value: 1, percent: 100 }]); // Small placeholder
+            setPieChartData([{ name: 'Nenhum dado disponível', value: 1, percent: 100 }]); 
         }
 
 
@@ -97,7 +90,6 @@ export default function ProductQualityDashboard() {
     }
   }, [user, authLoading, navigate]);
 
-  // Customização do Tooltip para o Recharts
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
         const data = payload[0].payload;
@@ -128,7 +120,6 @@ export default function ProductQualityDashboard() {
     );
   }
 
-  // Já redirecionamos no useEffect, mas este é um fallback visual
   if (!user || user.level < 2) {
     return (
       <Box sx={{ flexGrow: 1, p: 3 }}>
@@ -146,7 +137,7 @@ export default function ProductQualityDashboard() {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Grid container spacing={3}>
-        {/* Gráfico de Pizza */}
+        {}
         <Grid item xs={12} md={6}>
           <Paper elevation={3} sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Typography variant="h6" gutterBottom>
@@ -183,7 +174,7 @@ export default function ProductQualityDashboard() {
           </Paper>
         </Grid>
 
-        {/* Tabela de Produtos */}
+        {}
         <Grid item xs={12} md={6}>
           <Paper elevation={3} sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Typography variant="h6" gutterBottom>
@@ -209,9 +200,9 @@ export default function ProductQualityDashboard() {
                       <TableRow
                         key={item.peca}
                         sx={{
-                          backgroundColor: item.taxaNC > 7 ? '#FFEBEE' : 'inherit', // Vermelho claro para > 7%
+                          backgroundColor: item.taxaNC > 7 ? '#FFEBEE' : 'inherit', 
                           '&:hover': {
-                            backgroundColor: item.taxaNC > 7 ? '#FFCDD2' : '#f5f5f5', // Cor mais escura no hover
+                            backgroundColor: item.taxaNC > 7 ? '#FFCDD2' : '#f5f5f5', 
                           },
                         }}
                       >

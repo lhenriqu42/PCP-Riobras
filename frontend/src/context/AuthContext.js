@@ -6,28 +6,26 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // Adicionado para indicar carregamento inicial
+  const [loading, setLoading] = useState(true); 
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token'); // <<<<<<< ADIÇÃO: Recupera o token
+    const storedToken = localStorage.getItem('token'); 
     
     if (storedUser && storedToken) {
       try {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
         setIsAuthenticated(true);
-        // <<<<<<< ADIÇÃO: Configura o cabeçalho Authorization para todas as requisições axios
         axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
       } catch (e) {
         console.error("Erro ao fazer parse do usuário ou token do localStorage", e);
-        // Limpa qualquer dado inconsistente
         localStorage.removeItem('user');
         localStorage.removeItem('token');
-        delete axios.defaults.headers.common['Authorization']; // Garante que o cabeçalho é removido
+        delete axios.defaults.headers.common['Authorization']; 
       }
     }
-    setLoading(false); // Finaliza o carregamento inicial
+    setLoading(false); 
   }, []);
 
   const login = async (username, password) => {
@@ -36,7 +34,7 @@ export const AuthProvider = ({ children }) => {
       
       if (response.status === 200) {
         setIsAuthenticated(true);
-        const { user: userData, token } = response.data; // <<<<<<< ADIÇÃO: Pega o token da resposta
+        const { user: userData, token } = response.data; 
         
         const userToStore = {
           username: userData.username,
@@ -45,9 +43,8 @@ export const AuthProvider = ({ children }) => {
 
         setUser(userToStore);
         localStorage.setItem('user', JSON.stringify(userToStore));
-        localStorage.setItem('token', token); // <<<<<<< ADIÇÃO: Armazena o token
+        localStorage.setItem('token', token); 
         
-        // <<<<<<< ADIÇÃO: Define o cabeçalho Authorization para futuras requisições
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         
         return { success: true };
@@ -57,8 +54,8 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       setUser(null);
       localStorage.removeItem('user');
-      localStorage.removeItem('token'); // <<<<<<< ADIÇÃO: Remove o token em caso de falha no login
-      delete axios.defaults.headers.common['Authorization']; // <<<<<<< ADIÇÃO: Remove o cabeçalho
+      localStorage.removeItem('token'); 
+      delete axios.defaults.headers.common['Authorization'];
       return { success: false, message: error.response?.data?.message || 'Erro ao fazer login' };
     }
   };
@@ -67,12 +64,11 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
     setUser(null);
     localStorage.removeItem('user');
-    localStorage.removeItem('token'); // <<<<<<< ADIÇÃO: Remove o token ao fazer logout
-    delete axios.defaults.headers.common['Authorization']; // <<<<<<< ADIÇÃO: Remove o cabeçalho ao fazer logout
+    localStorage.removeItem('token'); 
+    delete axios.defaults.headers.common['Authorization'];
   };
 
   return (
-    // <<<<<<< ADIÇÃO: O estado 'loading' pode ser útil para renderizar um spinner
     <AuthContext.Provider value={{ isAuthenticated, user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>

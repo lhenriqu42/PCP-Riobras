@@ -10,7 +10,7 @@ import ProductQualityDashboard from './pages/ProductQualityDashboard';
 import Layout from './layout/Layout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-import { ThemeProvider, CssBaseline, Box, CircularProgress } from '@mui/material'; // <-- Linha corrigida
+import { ThemeProvider, CssBaseline, Box, CircularProgress } from '@mui/material'; 
 import theme from './theme';
 
 
@@ -26,7 +26,7 @@ const PrivateRoute = ({ children, requiredLevel }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/Login" />;
   }
 
   if (requiredLevel && user && user.level < requiredLevel) {
