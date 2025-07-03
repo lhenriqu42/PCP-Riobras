@@ -1,70 +1,44 @@
-# Getting Started with Create React App
+# Dashboard de Produção - Injetora
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Um sistema para controle de produção de injetoras, com funções de:
+Acompanhamento da quantidade produzida;
+Controle de refugos;
+Analise de metas.
+Desenvolvido com React (MUI) para o frontend e Node.js para o backend (API).
 
-## Available Scripts
+## Funcionalidades Principais
 
-In the project directory, you can run:
+* **Dashboard:** Visualize dados de produção diária com filtros por data, peça, tipo de injetora e turno.
+* **Gráfico de linha de Produção:** Acompanhe a quantidade efetiva injetada, a meta de produção diária e as peças não conformes.
+* **Informações Detalhadas de cada produção:** Analise as injeções de cada peça, data, turno, funcionário e máquina.
+* **Níveis de acesso para meta de Produção:** Usuários com nível de permissão adequado podem visualizar e ajustar a meta de produção diária.
+* **Autenticação de Usuários:** Sistema de login com diferentes níveis de acesso.
 
-### `npm start`
+## Tecnologias Utilizadas
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+**Frontend:**
+* **React.js:** Biblioteca JavaScript para construção de interfaces de usuário.
+* **Material-UI (MUI):** Biblioteca de componentes React que implementa o Material Design do Google, garantindo um design responsivo e moderno.
+* **Axios:** Cliente HTTP para fazer requisições a APIs.
+* **Recharts:** Biblioteca de gráficos baseada em React para visualização de dados.
+* **React Router DOM:** Para navegação entre as páginas da aplicação.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+**Backend (API):**
+* **PostgreSQL:** Sistema de gerenciamento de banco de dados para armazenar os apontamentos, informações de peças, máquinas, usuários e meta de produção.
+* **Jsonwebtoken:** Para lidar com segurança de senhas e tokens de autenticação.
 
-### `npm test`
+## Uso local:
+Em breve disponibilizarei uma versão de homologação à fins de testes da aplicação.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-### `npm run build`
+## Contribuição
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Contribuições são bem-vindas! Sinta-se à vontade para abrir issues e pull requests para melhorias, correções de bugs ou novas funcionalidades.
+(Com exceção do Luiz. Ele não pode)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 📧 Contato
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Para dúvidas ou sugestões, entre em contato:
 
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+* Lucas Cardoso
+* lucasrabellocardoso@gmail.com - 51 993496782
