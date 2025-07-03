@@ -32,9 +32,9 @@ function HomePage() {
                     Navegue pelas funcionalidades:
                 </Typography>
 
-                <Grid container spacing={3} justifyContent="center" sx={{ mt: 3 }}>
+                <Box justifyContent="center" display={'flex'} flexDirection={'column'} px={10}>
                     {/* Card de Navegação - Dashboard */}
-                    <Grid item xs={12} sm={6} md={4}>
+                    <Box>
                         <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
                             <Typography variant="h6" color="primary" gutterBottom>
                                 Visão Geral da Produção
@@ -51,10 +51,10 @@ function HomePage() {
                                 Ir para Dashboard
                             </Button>
                         </Paper>
-                    </Grid>
+                    </Box>
 
                     {/* Card de Navegação - Apontamentos */}
-                    <Grid item xs={12} sm={6} md={4}>
+                    <Box>
                         <Paper variant="outlined" sx={{ p: 1.5, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
                             <Typography variant="h6" color="secondary" gutterBottom>
                                 Registrar Apontamentos
@@ -70,11 +70,11 @@ function HomePage() {
                                 Novo Apontamento
                             </Button>
                         </Paper>
-                    </Grid>
+                    </Box>
 
                     {/* REMOVIDO: Antigo Card do Gráfico de Pizza */}
                     {/* <Grid item xs={12} md={4}>...</Grid> */}
-                </Grid>
+                </Box>
             </Paper>
         </Box>
     );

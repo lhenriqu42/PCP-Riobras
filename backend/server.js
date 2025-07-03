@@ -42,7 +42,7 @@ if (!jwtSecret) {
     process.exit(1);
 }
 
-// Middleware de autenticação JWT
+//JWT
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
