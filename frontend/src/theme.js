@@ -3,36 +3,36 @@ import { createTheme } from '@mui/material/styles';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#007bff', // Azul primário (pode ser o azul da Riobras)
+      main: '#007bff', 
       light: '#6dacef',
       dark: '#0056b3',
       contrastText: '#fff',
     },
     secondary: {
-      main: '#6c757d', // Cinza secundário
+      main: '#6c757d', 
       light: '#8e98a0',
       dark: '#494e52',
       contrastText: '#fff',
     },
     error: {
-      main: '#dc3545', // Vermelho para erros
+      main: '#dc3545', 
     },
     warning: {
-      main: '#ffc107', // Amarelo para avisos
+      main: '#ffc107', 
     },
     info: {
-      main: '#17a2b8', // Azul claro para informações
+      main: '#17a2b8', 
     },
     success: {
-      main: '#28a745', // Verde para sucesso
+      main: '#28a745', 
     },
     background: {
-      default: '#f8f9fa', // Cor de fundo padrão da página
-      paper: '#ffffff',   // Cor de fundo para Cards, Papers
+      default: '#f8f9fa', 
+      paper: '#ffffff',   
     },
   },
   typography: {
-    fontFamily: 'Roboto, Arial, sans-serif', // Fonte padrão
+    fontFamily: 'Roboto, Arial, sans-serif', 
     h1: { fontSize: '2.5rem', fontWeight: 600, marginBottom: '1rem' },
     h2: { fontSize: '2rem', fontWeight: 600, marginBottom: '0.8rem' },
     h3: { fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.7rem' },
@@ -42,19 +42,19 @@ const theme = createTheme({
     body1: { fontSize: '1rem' },
     body2: { fontSize: '0.875rem' },
   },
-  spacing: 8, // Define a unidade de espaçamento (8px é o padrão do Material Design)
+  spacing: 8,
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          textTransform: 'none', // Botões com texto normal, não em CAPS
+          textTransform: 'none',
         },
       },
     },
     MuiPaper: {
       styleOverrides: {
         root: {
-          borderRadius: 8, // Bordas mais arredondadas para Paper e Card
+          borderRadius: 8, 
         },
       },
     },
