@@ -21,7 +21,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import moment from 'moment';
-import API_URL from '../api';
+import REACT_APP_API_URL from '../api';
 
 export default function ApontamentosInjetoraHoraria() {
   const location = useLocation();
@@ -119,7 +119,7 @@ export default function ApontamentosInjetoraHoraria() {
     };
 
     try {
-      await axios.post(`${API_URL}/api/apontamentos/injetora`, payload);
+      await axios.post(`${REACT_APP_API_URL}/api/apontamentos/injetora`, payload);
       setSuccess(`Apontamento para ${currentEntry.hora} registrado com sucesso!`);
       const updatedApontamentos = [...apontamentosHorarios];
       updatedApontamentos[index].finalizado = true;
@@ -187,7 +187,7 @@ export default function ApontamentosInjetoraHoraria() {
                         tipo_registro: updatedApontamentos[i].tipo_registro,
                     };
                     try {
-                        await axios.post(`${API_URL}/api/apontamentos/injetora`, currentPayload);
+                        await axios.post(`${REACT_APP_API_URL}/api/apontamentos/injetora`, currentPayload);
                         updatedApontamentos[i].finalizado = true;
                         setApontamentosHorarios([...updatedApontamentos]);
                     } catch (err) {
@@ -207,7 +207,7 @@ export default function ApontamentosInjetoraHoraria() {
                         tipo_registro: 'finalizado',
                     };
                     try {
-                        await axios.post(`${API_URL}/api/apontamentos/injetora`, currentPayload);
+                        await axios.post(`${REACT_APP_API_URL}/api/apontamentos/injetora`, currentPayload);
                         updatedApontamentos[i].finalizado = true;
                         updatedApontamentos[i].quantidade_injetada = 0;
                         updatedApontamentos[i].pecas_nc = 0;
@@ -232,7 +232,7 @@ export default function ApontamentosInjetoraHoraria() {
                     tipo_registro: 'finalizado',
                 };
                 try {
-                    await axios.post(`${API_URL}/api/apontamentos/injetora`, payloadRemaining);
+                    await axios.post(`${REACT_APP_API_URL}/api/apontamentos/injetora`, payloadRemaining);
                     updatedApontamentos[i].finalizado = true;
                     updatedApontamentos[i].tipo_registro = 'finalizado';
                     updatedApontamentos[i].quantidade_injetada = 0;

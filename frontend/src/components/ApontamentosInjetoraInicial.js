@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import API_URL from '../api';
+import REACT_APP_API_URL from '../api';
 
 export default function ApontamentosInjetoraInicial() {
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ export default function ApontamentosInjetoraInicial() {
   useEffect(() => {
     const fetchLists = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/data/lists`);
+        const response = await axios.get(`${REACT_APP_API_URL}/api/data/lists`);
         setMaquinas(response.data.maquinas || []);
         setFuncionarios(response.data.funcionarios || []);
         setPecas(response.data.pecas || []);
