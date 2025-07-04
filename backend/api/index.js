@@ -327,6 +327,6 @@ app.get('/api/apontamentos/injetora', async (req, res) => {
     }
 });
 
-module.exports = app;
+export default app;
 ;
 
