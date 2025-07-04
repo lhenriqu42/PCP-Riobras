@@ -27,6 +27,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useEffect, useCallback } from 'react';
+import REACT_APP_API_URL from '../api';
 
 function Row({ row }) {
     const [open, setOpen] = useState(false);
@@ -214,7 +215,7 @@ export default function DashboardInjetora() {
                 tipoInjetora: selectedTipoInjetora === 'todos' ? null : selectedTipoInjetora,
                 turno: selectedTurno === 'todos' ? null : selectedTurno,
             };
-            const response = await axios.get('http://localhost:3001/api/apontamentos/injetora', { params });
+            const response = await axios.get(`${REACT_APP_API_URL}/api/apontamentos/injetora`, { params });
             setApontamentos(response.data);
             processApontamentosForDashboard(response.data, metaProducao);
         } catch (err) {
@@ -230,12 +231,12 @@ export default function DashboardInjetora() {
         const fetchDataAndMeta = async () => {
             try {
                 setLoadingFilters(true);
-                const listsResponse = await axios.get('http://localhost:3001/api/data/lists');
+                const listsResponse = await axios.get(`${REACT_APP_API_URL}/api/data/lists`);
                 setPecasList(listsResponse.data.pecas);
                 const uniqueTiposInjetora = [...new Set(listsResponse.data.maquinas.map(m => m.tipo_injetora))];
                 setMaquinasList(uniqueTiposInjetora);
 
-                const metaResponse = await axios.get('http://localhost:3001/api/meta-producao');
+                const metaResponse = await axios.get(`${REACT_APP_API_URL}/api/meta-producao`);
                 setMetaProducao(Number(metaResponse.data.meta || 0));
                 setNewMetaValue(Number(metaResponse.data.meta || 0));
 
@@ -273,7 +274,7 @@ export default function DashboardInjetora() {
     const handleSaveMeta = async () => {
         setError('');
         try {
-            const response = await axios.post('http://localhost:3001/api/meta-producao', { meta: newMetaValue });
+            const response = await axios.post(`${REACT_APP_API_URL}/api/meta-producao`, { meta: newMetaValue });
             if (response.status === 200) {
                 setMetaProducao(newMetaValue);
                 setEditMetaMode(false);

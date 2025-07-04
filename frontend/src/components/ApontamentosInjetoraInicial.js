@@ -93,7 +93,15 @@ export default function ApontamentosInjetoraInicial() {
     : maquinas;
 
   return (
-    <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+    <Box
+      component="main"
+      sx={{
+        flexGrow: 1,
+        p: 3,
+        maxWidth: 'lg',
+        mx: 'auto',
+      }}
+    >
       <Typography variant="h4" gutterBottom>
         Apontamento de Injetora
       </Typography>
@@ -162,7 +170,7 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          <Grid item xs={12} sm={10}>
+          <Grid item xs={12} sm={6}>
             <Autocomplete
               id="funcionario-autocomplete"
               options={funcionarios}
@@ -186,7 +194,7 @@ export default function ApontamentosInjetoraInicial() {
             />
           </Grid>
 
-          <Grid item xs={12} sm={10}>
+          <Grid item xs={12} sm={6}>
             <Autocomplete
               id="peca-autocomplete"
               options={pecas}
