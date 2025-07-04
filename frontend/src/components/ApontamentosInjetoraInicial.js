@@ -188,6 +188,10 @@ export default function ApontamentosInjetoraInicial() {
                   InputLabelProps={{ shrink: true }}
                   error={!!error && !formData.funcionario}
                   helperText={!!error && !formData.funcionario ? "Campo obrigatório" : ""}
+                  InputProps={{
+                    ...params.InputProps,
+                    sx: { minWidth: '280px' }
+                  }}
                 />
               )}
               noOptionsText="Nenhum funcionário encontrado"
@@ -212,6 +216,10 @@ export default function ApontamentosInjetoraInicial() {
                   InputLabelProps={{ shrink: true }}
                   error={!!error && !formData.peca}
                   helperText={!!error && !formData.peca ? "Campo obrigatório" : ""}
+                  InputProps={{
+                    ...params.InputProps,
+                    sx: { minWidth: '280px' }
+                  }}
                 />
               )}
               noOptionsText="Nenhuma peça encontrada"
