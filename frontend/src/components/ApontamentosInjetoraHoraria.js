@@ -21,7 +21,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import moment from 'moment';
-import API_URL from './api';
+import API_URL from '../api';
 
 export default function ApontamentosInjetoraHoraria() {
   const location = useLocation();

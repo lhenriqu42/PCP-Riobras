@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import API_URL from './api';
+import API_URL from '../api';
 
 export default function ApontamentosInjetoraInicial() {
   const navigate = useNavigate();
