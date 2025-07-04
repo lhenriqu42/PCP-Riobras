@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import REACT_APP_API_URL from '../api';
 
 const AuthContext = createContext();
 
@@ -30,7 +31,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const response = await axios.post('REACT_APP_API_URL/login', { username, password });
+      const response = await axios.post(`${REACT_APP_API_URL}/login`, { username, password });
       
       if (response.status === 200) {
         setIsAuthenticated(true);
