@@ -43,7 +43,6 @@ if (!jwtSecret) {
 
 console.log('Valor de JWT_SECRET carregado:', process.env.JWT_SECRET);
 
-//JWT
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];

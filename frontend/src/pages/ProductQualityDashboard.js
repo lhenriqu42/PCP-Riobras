@@ -11,7 +11,7 @@ import {
   TableRow,
   CircularProgress,
   Alert,
-  Grid 
+  Grid
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -20,20 +20,21 @@ import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 
-const COLORS = ['#00C49F', '#FF8042']; 
+const COLORS = ['#00C49F', '#FF8042'];
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 export default function ProductQualityDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [productData, setProductData] = useState([]);
-  const [pieChartData, setPieChartData] = useState([]); 
+  const [pieChartData, setPieChartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!authLoading) {
       if (!user || user.level < 2) {
-        navigate('/home', { replace: true }); 
+        navigate('/home', { replace: true });
         return;
       }
     }
@@ -42,7 +43,7 @@ export default function ProductQualityDashboard() {
       setLoading(true);
       setError('');
       try {
-        const productsResponse = await axios.get('http://localhost:3001/api/produtos/taxa-nc');
+        const productsResponse = await axios.get(`${API_URL}/api/produtos/taxa-nc`);
         setProductData(productsResponse.data);
 
         const thirtyDaysAgo = new Date();
@@ -51,7 +52,7 @@ export default function ProductQualityDashboard() {
           dataInicio: thirtyDaysAgo.toISOString().split('T')[0],
           dataFim: new Date().toISOString().split('T')[0],
         };
-        const apontamentosResponse = await axios.get('http://localhost:3001/api/apontamentos/injetora', { params });
+        const apontamentosResponse = await axios.get(`${API_URL}/api/apontamentos/injetora`, { params });
         const apontamentos = apontamentosResponse.data;
 
         let totalPecasConformes = 0;
@@ -73,7 +74,7 @@ export default function ProductQualityDashboard() {
                 { name: 'Peças Não Conformes', value: totalPecasNC, percent: percentNC },
             ]);
         } else {
-            setPieChartData([{ name: 'Nenhum dado disponível', value: 1, percent: 100 }]); 
+            setPieChartData([{ name: 'Nenhum dado disponível', value: 1, percent: 100 }]);
         }
 
 
@@ -137,7 +138,6 @@ export default function ProductQualityDashboard() {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Grid container spacing={3}>
-        {}
         <Grid item xs={12} md={6}>
           <Paper elevation={3} sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Typography variant="h6" gutterBottom>
@@ -174,7 +174,6 @@ export default function ProductQualityDashboard() {
           </Paper>
         </Grid>
 
-        {}
         <Grid item xs={12} md={6}>
           <Paper elevation={3} sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Typography variant="h6" gutterBottom>
@@ -200,9 +199,9 @@ export default function ProductQualityDashboard() {
                       <TableRow
                         key={item.peca}
                         sx={{
-                          backgroundColor: item.taxaNC > 7 ? '#FFEBEE' : 'inherit', 
+                          backgroundColor: item.taxaNC > 7 ? '#FFEBEE' : 'inherit',
                           '&:hover': {
-                            backgroundColor: item.taxaNC > 7 ? '#FFCDD2' : '#f5f5f5', 
+                            backgroundColor: item.taxaNC > 7 ? '#FFCDD2' : '#f5f5f5',
                           },
                         }}
                       >

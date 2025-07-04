@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'; 
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -21,6 +21,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import moment from 'moment';
+import API_URL from './api';
 
 export default function ApontamentosInjetoraHoraria() {
   const location = useLocation();
@@ -118,7 +119,7 @@ export default function ApontamentosInjetoraHoraria() {
     };
 
     try {
-      await axios.post('http://localhost:3001/api/apontamentos/injetora', payload);
+      await axios.post(`${API_URL}/api/apontamentos/injetora`, payload);
       setSuccess(`Apontamento para ${currentEntry.hora} registrado com sucesso!`);
       const updatedApontamentos = [...apontamentosHorarios];
       updatedApontamentos[index].finalizado = true;
@@ -186,14 +187,14 @@ export default function ApontamentosInjetoraHoraria() {
                         tipo_registro: updatedApontamentos[i].tipo_registro,
                     };
                     try {
-                        await axios.post('http://localhost:3001/api/apontamentos/injetora', currentPayload);
+                        await axios.post(`${API_URL}/api/apontamentos/injetora`, currentPayload);
                         updatedApontamentos[i].finalizado = true;
-                        setApontamentosHorarios([...updatedApontamentos]); 
+                        setApontamentosHorarios([...updatedApontamentos]);
                     } catch (err) {
                         console.error('Erro ao registrar o apontamento atual ao encerrar:', err);
                         setError('Erro ao registrar o apontamento atual. Operação não encerrada.');
                         setLoading(false);
-                        return; 
+                        return;
                     }
                 } else if (i === currentHourIndex && updatedApontamentos[i].tipo_registro === 'producao' &&
                     updatedApontamentos[i].quantidade_injetada === '' && updatedApontamentos[i].pecas_nc === '') {
@@ -206,7 +207,7 @@ export default function ApontamentosInjetoraHoraria() {
                         tipo_registro: 'finalizado',
                     };
                     try {
-                        await axios.post('http://localhost:3001/api/apontamentos/injetora', currentPayload);
+                        await axios.post(`${API_URL}/api/apontamentos/injetora`, currentPayload);
                         updatedApontamentos[i].finalizado = true;
                         updatedApontamentos[i].quantidade_injetada = 0;
                         updatedApontamentos[i].pecas_nc = 0;
@@ -231,7 +232,7 @@ export default function ApontamentosInjetoraHoraria() {
                     tipo_registro: 'finalizado',
                 };
                 try {
-                    await axios.post('http://localhost:3001/api/apontamentos/injetora', payloadRemaining);
+                    await axios.post(`${API_URL}/api/apontamentos/injetora`, payloadRemaining);
                     updatedApontamentos[i].finalizado = true;
                     updatedApontamentos[i].tipo_registro = 'finalizado';
                     updatedApontamentos[i].quantidade_injetada = 0;
@@ -320,8 +321,6 @@ export default function ApontamentosInjetoraHoraria() {
               **Turno:** {initialData.turno}
             </Typography>
           </Grid>
-          {}
-          {}
         </Grid>
       </Paper>
 

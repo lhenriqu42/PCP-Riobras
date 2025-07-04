@@ -11,7 +11,6 @@ import {
     MenuItem,
     Alert,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Collapse, IconButton,
-    Button
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -136,7 +135,7 @@ export default function DashboardInjetora() {
                     quantidadeInjetada: 0,
                     pecasNC: 0,
                     quantidadeEfetiva: 0,
-                    meta: Number(currentMeta) 
+                    meta: Number(currentMeta)
                 };
             }
 
@@ -166,8 +165,6 @@ export default function DashboardInjetora() {
 
         const sortedDailyData = Object.values(dailyAggregates).sort((a, b) => moment(a.date).diff(moment(b.date)));
         setDailyProductionData(sortedDailyData);
-
-        console.log("Dados para o Gráfico Diário:", sortedDailyData);
 
         const sortedTableData = Object.values(tableAggregates).sort((a, b) => {
             const dateComparison = moment(a.data).diff(moment(b.data));
@@ -239,8 +236,8 @@ export default function DashboardInjetora() {
                 setMaquinasList(uniqueTiposInjetora);
 
                 const metaResponse = await axios.get('http://localhost:3001/api/meta-producao');
-                setMetaProducao(Number(metaResponse.data.meta || 0)); 
-                setNewMetaValue(Number(metaResponse.data.meta || 0)); 
+                setMetaProducao(Number(metaResponse.data.meta || 0));
+                setNewMetaValue(Number(metaResponse.data.meta || 0));
 
             } catch (err) {
                 console.error('Erro ao carregar dados iniciais:', err);
@@ -270,7 +267,7 @@ export default function DashboardInjetora() {
     };
 
     const handleNewMetaChange = (event) => {
-        setNewMetaValue(Number(event.target.value)); 
+        setNewMetaValue(Number(event.target.value));
     };
 
     const handleSaveMeta = async () => {
@@ -438,7 +435,6 @@ export default function DashboardInjetora() {
                 </Paper>
 
                 <Grid container spacing={4}>
-                    {}
                     <Grid item xs={12} md={12}>
                         <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
                             <Typography variant="h6" gutterBottom>
@@ -467,8 +463,6 @@ export default function DashboardInjetora() {
                             )}
                         </Paper>
                     </Grid>
-
-                    {}
                 </Grid>
 
                 <Paper elevation={3} sx={{ p: 3, mt: 4 }}>

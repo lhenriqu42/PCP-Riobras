@@ -10,10 +10,11 @@ import {
   InputLabel,
   Select,
   Alert,
-  Autocomplete 
+  Autocomplete
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_URL from './api';
 
 export default function ApontamentosInjetoraInicial() {
   const navigate = useNavigate();
@@ -22,8 +23,8 @@ export default function ApontamentosInjetoraInicial() {
     dataApontamento: '',
     turno: '',
     maquina: '',
-    funcionario: null, 
-    peca: null,      
+    funcionario: null,
+    peca: null,
   });
   const [error, setError] = useState('');
   const [maquinas, setMaquinas] = useState([]);
@@ -33,7 +34,7 @@ export default function ApontamentosInjetoraInicial() {
   useEffect(() => {
     const fetchLists = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/api/data/lists');
+        const response = await axios.get(`${API_URL}/api/data/lists`);
         setMaquinas(response.data.maquinas || []);
         setFuncionarios(response.data.funcionarios || []);
         setPecas(response.data.pecas || []);
@@ -56,7 +57,7 @@ export default function ApontamentosInjetoraInicial() {
   const handleAutocompleteChange = (name) => (event, value) => {
     setFormData((prevData) => ({
       ...prevData,
-      [name]: value, 
+      [name]: value,
     }));
   };
 
@@ -79,8 +80,8 @@ export default function ApontamentosInjetoraInicial() {
 
     const initialDataToSend = {
       ...formData,
-      funcionario: formData.funcionario.nome_completo, 
-      peca: formData.peca.codigo_peca,                 
+      funcionario: formData.funcionario.nome_completo,
+      peca: formData.peca.codigo_peca,
     };
 
     console.log('Dados iniciais submetidos:', initialDataToSend);
@@ -101,7 +102,6 @@ export default function ApontamentosInjetoraInicial() {
 
       <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
         <Grid container spacing={3}>
-          {}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required variant="outlined">
               <InputLabel id="tipo-injetora-label" shrink={true}>Tipo de Injetora</InputLabel>
@@ -122,7 +122,6 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required variant="outlined">
               <InputLabel id="maquina-label" shrink={true}>Máquina</InputLabel>
@@ -145,7 +144,6 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {/* Turno */}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required variant="outlined">
               <InputLabel id="turno-label" shrink={true}>Turno</InputLabel>
@@ -164,15 +162,14 @@ export default function ApontamentosInjetoraInicial() {
             </FormControl>
           </Grid>
 
-          {}
           <Grid item xs={12} sm={10}>
             <Autocomplete
               id="funcionario-autocomplete"
               options={funcionarios}
-              getOptionLabel={(option) => option.nome_completo || ''} 
-              value={formData.funcionario} 
+              getOptionLabel={(option) => option.nome_completo || ''}
+              value={formData.funcionario}
               onChange={handleAutocompleteChange('funcionario')}
-              isOptionEqualToValue={(option, value) => option.id === value.id} 
+              isOptionEqualToValue={(option, value) => option.id === value.id}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -181,7 +178,7 @@ export default function ApontamentosInjetoraInicial() {
                   required
                   fullWidth
                   InputLabelProps={{ shrink: true }}
-                  error={!!error && !formData.funcionario} 
+                  error={!!error && !formData.funcionario}
                   helperText={!!error && !formData.funcionario ? "Campo obrigatório" : ""}
                 />
               )}
@@ -189,13 +186,12 @@ export default function ApontamentosInjetoraInicial() {
             />
           </Grid>
 
-          {}
           <Grid item xs={12} sm={10}>
             <Autocomplete
               id="peca-autocomplete"
               options={pecas}
-              getOptionLabel={(option) => `${option.descricao_peca} (${option.codigo_peca})` || ''} 
-              value={formData.peca} 
+              getOptionLabel={(option) => `${option.descricao_peca} (${option.codigo_peca})` || ''}
+              value={formData.peca}
               onChange={handleAutocompleteChange('peca')}
               isOptionEqualToValue={(option, value) => option.id === value.id}
               renderInput={(params) => (
@@ -206,7 +202,7 @@ export default function ApontamentosInjetoraInicial() {
                   required
                   fullWidth
                   InputLabelProps={{ shrink: true }}
-                  error={!!error && !formData.peca} 
+                  error={!!error && !formData.peca}
                   helperText={!!error && !formData.peca ? "Campo obrigatório" : ""}
                 />
               )}
@@ -214,7 +210,6 @@ export default function ApontamentosInjetoraInicial() {
             />
           </Grid>
 
-          {}
           <Grid item xs={12} sm={6}>
             <TextField
               label="Data do Apontamento"
