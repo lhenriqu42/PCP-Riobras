@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box,
     Typography,
@@ -11,6 +11,7 @@ import {
     MenuItem,
     Alert,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Collapse, IconButton,
+    Autocomplete
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -26,7 +27,6 @@ import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
-import { useEffect, useCallback } from 'react';
 import REACT_APP_API_URL from '../api';
 
 function Row({ row }) {
@@ -109,7 +109,7 @@ export default function DashboardInjetora() {
 
     const [startDate, setStartDate] = useState(moment().subtract(7, 'days'));
     const [endDate, setEndDate] = useState(moment());
-    const [selectedPeca, setSelectedPeca] = useState('todos');
+    const [selectedPeca, setSelectedPeca] = useState(null);
     const [selectedTipoInjetora, setSelectedTipoInjetora] = useState('todos');
     const [selectedTurno, setSelectedTurno] = useState('todos');
 
@@ -211,7 +211,7 @@ export default function DashboardInjetora() {
             const params = {
                 dataInicio: startDate ? startDate.format('YYYY-MM-DD') : '',
                 dataFim: endDate ? endDate.format('YYYY-MM-DD') : '',
-                peca: selectedPeca === 'todos' ? null : selectedPeca,
+                peca: selectedPeca ? selectedPeca.codigo_peca : null,
                 tipoInjetora: selectedTipoInjetora === 'todos' ? null : selectedTipoInjetora,
                 turno: selectedTurno === 'todos' ? null : selectedTurno,
             };
@@ -232,7 +232,7 @@ export default function DashboardInjetora() {
             try {
                 setLoadingFilters(true);
                 const listsResponse = await axios.get(`${REACT_APP_API_URL}/api/data/lists`);
-                setPecasList(listsResponse.data.pecas);
+                setPecasList(listsResponse.data.pecas || []);
                 const uniqueTiposInjetora = [...new Set(listsResponse.data.maquinas.map(m => m.tipo_injetora))];
                 setMaquinasList(uniqueTiposInjetora);
 
@@ -255,8 +255,8 @@ export default function DashboardInjetora() {
     }, [handleApplyFilters]);
 
 
-    const handlePecaChange = (event) => {
-        setSelectedPeca(event.target.value);
+    const handlePecaChange = (event, newValue) => {
+        setSelectedPeca(newValue);
     };
 
     const handleTipoInjetoraChange = (event) => {
@@ -323,31 +323,25 @@ export default function DashboardInjetora() {
                             />
                         </Grid>
                         <Grid item xs={12} sm={2}>
-                            <FormControl fullWidth>
-                                <InputLabel id="peca-select-label">Peça (Produto)</InputLabel>
-                                <Select
-                                    labelId="peca-select-label"
-                                    value={selectedPeca}
-                                    label="Peça (Produto)"
-                                    onChange={handlePecaChange}
-                                    disabled={loadingFilters}
-                                    displayEmpty
-                                    renderValue={(selected) => {
-                                        if (selected === 'todos') {
-                                            return <em>Todos</em>;
-                                        }
-                                        const peca = pecasList.find(p => p.codigo_peca === selected);
-                                        return peca ? `${peca.descricao_peca} (${peca.codigo_peca})` : '';
-                                    }}
-                                >
-                                    <MenuItem value="todos"><em>Todos</em></MenuItem>
-                                    {pecasList.map((peca) => (
-                                        <MenuItem key={peca.codigo_peca} value={peca.codigo_peca}>
-                                            {peca.descricao_peca} ({peca.codigo_peca})
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
+                            <Autocomplete
+                                id="peca-autocomplete-dashboard"
+                                options={pecasList}
+                                getOptionLabel={(option) => option ? `${option.descricao_peca} (${option.codigo_peca})` : ''}
+                                value={selectedPeca}
+                                onChange={handlePecaChange}
+                                isOptionEqualToValue={(option, value) => option.codigo_peca === value.codigo_peca}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Peça (Produto)"
+                                        variant="outlined"
+                                        fullWidth
+                                        InputLabelProps={{ shrink: true }}
+                                        disabled={loadingFilters}
+                                    />
+                                )}
+                                noOptionsText="Nenhuma peça encontrada"
+                            />
                         </Grid>
                         <Grid item xs={12} sm={2}>
                             <FormControl fullWidth>
