@@ -15,8 +15,11 @@ import {
     FormControl,
     InputLabel,
     Select,
-    MenuItem
+    MenuItem,
+    IconButton
 } from '@mui/material';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -35,11 +38,12 @@ export default function ProductQualityDashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    const [employeeInjectionIndex, setEmployeeInjectionIndex] = useState([]);
     const [employeeProductInjectionIndex, setEmployeeProductInjectionIndex] = useState([]);
-    const [filterEmployeeProductIndex, setFilterEmployeeProductIndex] = useState('total'); 
-
+    const [filterEmployeeProductIndex, setFilterEmployeeProductIndex] = useState('total');
     const [pecasList, setPecasList] = useState([]);
+
+    const [sortColumn, setSortColumn] = useState('indice'); 
+    const [sortDirection, setSortDirection] = useState('desc'); 
 
     useEffect(() => {
         if (!authLoading) {
@@ -87,7 +91,6 @@ export default function ProductQualityDashboard() {
                     setPieChartData([{ name: 'Nenhum dado disponível', value: 1, percent: 100 }]);
                 }
 
-                const employeeMap = {};
                 const employeeProductMap = {};
 
                 apontamentos.forEach(ap => {
@@ -96,20 +99,6 @@ export default function ProductQualityDashboard() {
                     const quantidadeEfetiva = Number(ap.quantidade_efetiva || 0);
 
                     if (funcionario) {
-                        if (!employeeMap[funcionario]) {
-                            employeeMap[funcionario] = {
-                                funcionario: funcionario,
-                                totalPecasEfetivas: 0,
-                                totalPecasInjetadas: 0,
-                                totalPecasNC: 0
-                            };
-                        }
-                        employeeMap[funcionario].totalPecasEfetivas += quantidadeEfetiva;
-                        employeeMap[funcionario].totalPecasInjetadas += Number(ap.quantidade_injetada || 0);
-                        employeeMap[funcionario].totalPecasNC += Number(ap.pecas_nc || 0);
-                    }
-
-                    if (funcionario && peca) {
                         if (!employeeProductMap[funcionario]) {
                             employeeProductMap[funcionario] = {};
                         }
@@ -120,7 +109,7 @@ export default function ProductQualityDashboard() {
                                 totalPecasEfetivas: 0,
                                 totalPecasInjetadas: 0,
                                 totalPecasNC: 0,
-                                indice: 0 
+                                indice: 0
                             };
                         }
                         employeeProductMap[funcionario][peca].totalPecasEfetivas += quantidadeEfetiva;
@@ -129,21 +118,54 @@ export default function ProductQualityDashboard() {
                     }
                 });
 
-                const sortedEmployees = Object.values(employeeMap).sort((a, b) => b.totalPecasEfetivas - a.totalPecasEfetivas);
-                setEmployeeInjectionIndex(sortedEmployees);
 
                 let processedEmployeeProductData = [];
-                for (const emp in employeeProductMap) {
-                    for (const prod in employeeProductMap[emp]) {
-                        const data = employeeProductMap[emp][prod];
-                        data.indice = data.totalPecasInjetadas > 0 ?
-                            ((data.totalPecasEfetivas / data.totalPecasInjetadas) * 100).toFixed(2) : 0;
-                        processedEmployeeProductData.push(data);
-                    }
-                }
-                const uniquePecas = [...new Set(apontamentos.map(ap => ap.peca))].map(pecaName => ({ codigo_peca: pecaName, descricao_peca: pecaName }));
-                setPecasList(uniquePecas);
+                const allFuncs = [...new Set(apontamentos.map(ap => ap.funcionario))].filter(Boolean); // Filtrar valores nulos/undefined
 
+                allFuncs.forEach(func => {
+                    if (filterEmployeeProductIndex === 'total') {
+                        let totalInjetadas = 0;
+                        let totalNC = 0;
+                        let totalEfetivas = 0;
+
+                        for (const prod in employeeProductMap[func]) {
+                            totalInjetadas += employeeProductMap[func][prod].totalPecasInjetadas;
+                            totalNC += employeeProductMap[func][prod].totalPecasNC;
+                            totalEfetivas += employeeProductMap[func][prod].totalPecasEfetivas;
+                        }
+
+                        processedEmployeeProductData.push({
+                            funcionario: func,
+                            peca: 'Total', 
+                            totalPecasInjetadas: totalInjetadas,
+                            totalPecasNC: totalNC,
+                            totalPecasEfetivas: totalEfetivas,
+                            indice: totalInjetadas > 0 ? ((totalEfetivas / totalInjetadas) * 100).toFixed(2) : 0
+                        });
+                    } else {
+                        const productData = employeeProductMap[func]?.[filterEmployeeProductIndex];
+                        if (productData) {
+                            processedEmployeeProductData.push({
+                                ...productData,
+                                indice: productData.totalPecasInjetadas > 0 ? ((productData.totalPecasEfetivas / productData.totalPecasInjetadas) * 100).toFixed(2) : 0
+                            });
+                        } else {
+                            processedEmployeeProductData.push({
+                                funcionario: func,
+                                peca: filterEmployeeProductIndex,
+                                totalPecasInjetadas: 0,
+                                totalPecasNC: 0,
+                                totalPecasEfetivas: 0,
+                                indice: 0
+                            });
+                        }
+                    }
+                });
+
+                const uniquePecas = [...new Set(apontamentos.map(ap => ap.peca))].filter(Boolean)
+                    .map(pecaName => ({ codigo_peca: pecaName, descricao_peca: pecaName }))
+                    .sort((a, b) => a.descricao_peca.localeCompare(b.descricao_peca));
+                setPecasList(uniquePecas);
 
                 setEmployeeProductInjectionIndex(processedEmployeeProductData);
 
@@ -158,22 +180,62 @@ export default function ProductQualityDashboard() {
         if (!authLoading && user && user.level >= 2) {
             fetchData();
         }
-    }, [user, authLoading, navigate]);
+    }, [user, authLoading, navigate, filterEmployeeProductIndex]); 
 
     const handleFilterEmployeeProductIndexChange = (event) => {
         setFilterEmployeeProductIndex(event.target.value);
     };
 
-    const sortedEmployeeProductData = useCallback(() => {
-        let sortedData = [...employeeProductInjectionIndex];
-        if (filterEmployeeProductIndex === 'total') {
-            sortedData.sort((a, b) => b.totalPecasEfetivas - a.totalPecasEfetivas);
+    const handleSort = (column) => {
+        if (sortColumn === column) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
         } else {
-            sortedData = sortedData.filter(item => item.peca === filterEmployeeProductIndex);
-            sortedData.sort((a, b) => b.indice - a.indice);
+            setSortColumn(column);
+            setSortDirection('desc'); 
         }
-        return sortedData;
-    }, [employeeProductInjectionIndex, filterEmployeeProductIndex]);
+    };
+
+    const sortedEmployeeProductData = useCallback(() => {
+        let dataToSort = [...employeeProductInjectionIndex];
+
+        if (filterEmployeeProductIndex !== 'total') {
+            dataToSort = dataToSort.filter(item => item.peca === filterEmployeeProductIndex);
+        }
+
+        dataToSort.sort((a, b) => {
+            let valA, valB;
+            switch (sortColumn) {
+                case 'totalInjetado':
+                    valA = a.totalPecasInjetadas;
+                    valB = b.totalPecasInjetadas;
+                    break;
+                case 'pecasNC':
+                    valA = a.totalPecasNC;
+                    valB = b.totalPecasNC;
+                    break;
+                case 'pecasEfetivas':
+                    valA = a.totalPecasEfetivas;
+                    valB = b.totalPecasEfetivas;
+                    break;
+                case 'indice':
+                    valA = parseFloat(a.indice);
+                    valB = parseFloat(b.indice);
+                    break;
+                default:
+                    valA = a[sortColumn];
+                    valB = b[sortColumn];
+            }
+
+            if (valA < valB) {
+                return sortDirection === 'asc' ? -1 : 1;
+            }
+            if (valA > valB) {
+                return sortDirection === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+        return dataToSort;
+    }, [employeeProductInjectionIndex, filterEmployeeProductIndex, sortColumn, sortDirection]);
 
 
     const CustomTooltip = ({ active, payload, label }) => {
@@ -188,9 +250,9 @@ export default function ProductQualityDashboard() {
             }
             return (
                 <Paper sx={{ p: 1, backgroundColor: 'rgba(255, 255, 255, 0.9)', border: '1px solid #ccc' }}>
-                    <Typography variant="body2" sx={{ color: payload[0].color }}>{data.name}</Typography>
-                    <Typography variant="body2">Quantidade: {data.value}</Typography>
-                    <Typography variant="body2">Porcentagem: {data.percent.toFixed(2)}%</Typography>
+                        <Typography variant="body2" sx={{ color: payload[0].color }}>{data.name}</Typography>
+                        <Typography variant="body2">Quantidade: {data.value}</Typography>
+                        <Typography variant="body2">Porcentagem: {data.percent.toFixed(2)}%</Typography>
                 </Paper>
             );
         }
@@ -306,56 +368,17 @@ export default function ProductQualityDashboard() {
                 </Grid>
             </Grid>
 
-            ---
-
-            <Typography variant="h4" gutterBottom sx={{ mt: 4 }}>
-                Índice de Injeção por Funcionário
-            </Typography>
-
-            <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                    <Paper elevation={3} sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                        <Typography variant="h6" gutterBottom>
-                            Funcionários por Volume de Peças Efetivas
-                        </Typography>
-                        <TableContainer>
-                            <Table size="small">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Funcionário</TableCell>
-                                        <TableCell align="right">Total Peças Efetivas Injetadas</TableCell>
-                                        <TableCell align="right">Total Peças Injetadas</TableCell>
-                                        <TableCell align="right">Total Peças NC</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {employeeInjectionIndex.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={4} align="center">Nenhum dado de funcionário encontrado.</TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        employeeInjectionIndex.map((item, index) => (
-                                            <TableRow key={item.funcionario || index}>
-                                                <TableCell>{item.funcionario}</TableCell>
-                                                <TableCell align="right">{item.totalPecasEfetivas}</TableCell>
-                                                <TableCell align="right">{item.totalPecasInjetadas}</TableCell>
-                                                <TableCell align="right">{item.totalPecasNC}</TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    </Paper>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
+            <Box sx={{ mt: 4 }}>
+                <Typography variant="h4" gutterBottom>
+                    Índice de Injeção por Funcionário e Produto
+                </Typography>
+                <Grid item xs={12}>
                     <Paper elevation={3} sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                             <Typography variant="h6" gutterBottom component="div" sx={{ mb: 0 }}>
-                                Índice de Injeção por Funcionário e Produto
+                                Desempenho por Funcionário e Produto
                             </Typography>
-                            <FormControl size="small" sx={{ minWidth: 180 }}>
+                            <FormControl size="small" sx={{ minWidth: 200 }}>
                                 <InputLabel id="filter-employee-product-label">Filtrar por Produto</InputLabel>
                                 <Select
                                     labelId="filter-employee-product-label"
@@ -363,7 +386,7 @@ export default function ProductQualityDashboard() {
                                     label="Filtrar por Produto"
                                     onChange={handleFilterEmployeeProductIndexChange}
                                 >
-                                    <MenuItem value="total">Todos os Produtos (Ordenar por Total)</MenuItem>
+                                    <MenuItem value="total">Todos os Produtos (Agregado)</MenuItem>
                                     {pecasList.map((peca) => (
                                         <MenuItem key={peca.codigo_peca} value={peca.codigo_peca}>
                                             {peca.descricao_peca} ({peca.codigo_peca})
@@ -378,16 +401,36 @@ export default function ProductQualityDashboard() {
                                     <TableRow>
                                         <TableCell>Funcionário</TableCell>
                                         {filterEmployeeProductIndex !== 'total' && <TableCell>Produto</TableCell>}
-                                        <TableCell align="right">Total Injetado</TableCell>
-                                        <TableCell align="right">Peças NC</TableCell>
-                                        <TableCell align="right">Peças Efetivas</TableCell>
-                                        <TableCell align="right">Índice Injeção (%)</TableCell>
+                                        <TableCell align="right">
+                                            Total Injetado
+                                            <IconButton size="small" onClick={() => handleSort('totalInjetado')}>
+                                                {sortColumn === 'totalInjetado' && sortDirection === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+                                            </IconButton>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            Peças NC
+                                            <IconButton size="small" onClick={() => handleSort('pecasNC')}>
+                                                {sortColumn === 'pecasNC' && sortDirection === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+                                            </IconButton>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            Peças Efetivas
+                                            <IconButton size="small" onClick={() => handleSort('pecasEfetivas')}>
+                                                {sortColumn === 'pecasEfetivas' && sortDirection === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+                                            </IconButton>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            Índice Injeção (%)
+                                            <IconButton size="small" onClick={() => handleSort('indice')}>
+                                                {sortColumn === 'indice' && sortDirection === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+                                            </IconButton>
+                                        </TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {sortedEmployeeProductData().length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={filterEmployeeProductIndex !== 'total' ? 6 : 5} align="center">Nenhum dado de injeção por produto encontrado para o filtro selecionado.</TableCell>
+                                            <TableCell colSpan={filterEmployeeProductIndex !== 'total' ? 6 : 5} align="center">Nenhum dado de injeção por funcionário encontrado para o filtro selecionado.</TableCell>
                                         </TableRow>
                                     ) : (
                                         sortedEmployeeProductData().map((item, index) => (
@@ -408,7 +451,7 @@ export default function ProductQualityDashboard() {
                         </TableContainer>
                     </Paper>
                 </Grid>
-            </Grid>
+            </Box>
         </Box>
     );
 }
