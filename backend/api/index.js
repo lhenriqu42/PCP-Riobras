@@ -242,6 +242,71 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
     }
 });
 
+app.put('/api/apontamentos/injetora/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const user = req.user;
+
+    if (!user || user.level !== 2) {
+        return res.status(403).json({ message: 'Acesso negado. Você não tem permissão para editar apontamentos.' });
+    }
+
+    const {
+        tipoInjetora,
+        dataApontamento,
+        hora_apontamento,
+        turno,
+        maquina,
+        funcionario,
+        peca,
+        quantidade_injetada,
+        pecas_nc,
+        observacoes,
+        tipo_registro
+    } = req.body;
+
+    const quantidade_efetiva = quantidade_injetada - pecas_nc;
+
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('apontamentos_injetora')
+            .update({
+                tipo_injetora: tipoInjetora,
+                data_apontamento: dataApontamento,
+                hora_apontamento: hora_apontamento,
+                turno: turno,
+                maquina: maquina,
+                funcionario: funcionario,
+                peca: peca,
+                quantidade_injetada: quantidade_injetada,
+                pecas_nc: pecas_nc,
+                observacoes: observacoes,
+                tipo_registro: tipo_registro,
+                quantidade_efetiva: quantidade_efetiva
+            })
+            .eq('id', id)
+            .select();
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                return res.status(404).json({ message: 'Apontamento não encontrado para atualização.' });
+            }
+            return res.status(500).json({
+                message: 'Erro ao atualizar apontamento.',
+                details: error.message || 'Detalhes desconhecidos.',
+            });
+        }
+
+        if (!data || data.length === 0) {
+            return res.status(404).json({ message: 'Apontamento não encontrado para atualização ou nenhum dado foi alterado.' });
+        }
+
+        res.status(200).json(data[0]);
+    } catch (error) {
+        console.error('Erro geral ao atualizar apontamento:', error.message);
+        res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
+    }
+});
+
 app.delete('/api/apontamentos/injetora/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const user = req.user;
