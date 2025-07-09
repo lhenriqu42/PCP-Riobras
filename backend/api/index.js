@@ -242,6 +242,38 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
     }
 });
 
+app.delete('/api/apontamentos/injetora/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const user = req.user;
+
+    if (!user || user.level !== 2) {
+        return res.status(403).json({ message: 'Acesso negado. Você não tem permissão para deletar apontamentos.' });
+    }
+
+    try {
+        const { error } = await supabaseAdmin
+            .from('apontamentos_injetora')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                return res.status(404).json({ message: 'Apontamento não encontrado para exclusão.' });
+            }
+            return res.status(500).json({
+                message: 'Erro ao deletar apontamento.',
+                details: error.message || 'Detalhes desconhecidos.',
+            });
+        }
+
+        res.status(204).send();
+
+    } catch (error) {
+        console.error('Erro geral ao deletar apontamento:', error.message);
+        res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
+    }
+});
+
 app.get('/api/produtos/taxa-nc', authenticateToken, async (req, res) => {
     try {
         const { data: apontamentos, error } = await supabase
