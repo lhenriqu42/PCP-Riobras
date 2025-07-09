@@ -56,7 +56,7 @@ const authenticateToken = (req, res, next) => {
             console.error("Erro na verificação do token JWT:", err.message);
             return res.status(403).json({ message: 'Token inválido ou expirado.' });
         }
-        req.user = user; 
+        req.user = user;
         next();
     });
 };
@@ -64,7 +64,7 @@ const authenticateToken = (req, res, next) => {
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
-        const loginRange = 'Usuarios!A:C'; 
+        const loginRange = 'Usuarios!A:C';
 
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId,
@@ -72,7 +72,7 @@ app.post('/login', async (req, res) => {
         });
         const users = response.data.values;
 
-        if (!users || users.length < 2) { 
+        if (!users || users.length < 2) {
             return res.status(401).json({ message: 'Nenhum usuário encontrado na planilha de login.' });
         }
 
@@ -89,8 +89,8 @@ app.post('/login', async (req, res) => {
             };
             const token = jwt.sign(userPayload, jwtSecret, { expiresIn: '1h' });
 
-            res.status(200).json({ 
-                message: 'Login bem-sucedido!', 
+            res.status(200).json({
+                message: 'Login bem-sucedido!',
                 token: token,
                 user: { username, level: userLevel }
             });
@@ -103,26 +103,18 @@ app.post('/login', async (req, res) => {
     }
 });
 
-
-let cachedMeta = null; 
-
 app.get('/api/meta-producao', async (req, res) => {
     try {
-        if (cachedMeta !== null) {
-            return res.status(200).json({ meta: cachedMeta });
-        }
-
         const { data, error } = await supabase.from('configuracoes')
             .select('valor')
             .eq('chave', 'meta_producao_diaria')
-            .single(); 
+            .single();
 
-        if (error && error.code !== 'PGRST116') { 
+        if (error && error.code !== 'PGRST116') {
             throw error;
         }
 
-        const meta = data ? data.valor : 1000; 
-        cachedMeta = meta; 
+        const meta = data ? data.valor : 1000;
         res.status(200).json({ meta });
 
     } catch (error) {
@@ -130,7 +122,6 @@ app.get('/api/meta-producao', async (req, res) => {
         res.status(500).json({ message: 'Erro ao buscar meta de produção.', error: error.message });
     }
 });
-
 
 app.post('/api/meta-producao', authenticateToken, async (req, res) => {
     const user = req.user;
@@ -140,33 +131,40 @@ app.post('/api/meta-producao', authenticateToken, async (req, res) => {
         return res.status(403).json({ message: 'Acesso negado. Você não tem permissão para alterar a meta.' });
     }
 
-    if (typeof meta !== 'number' || meta < 0) {
+    if (typeof meta === 'undefined' || meta === null || isNaN(Number(meta)) || Number(meta) < 0) {
         return res.status(400).json({ message: 'Valor de meta inválido. Deve ser um número não negativo.' });
     }
+    const metaValue = Number(meta);
 
     try {
-        const { data, error: updateError } = await supabaseAdmin.from('configuracoes')
-            .update({ valor: meta, ultima_atualizacao: new Date().toISOString(), atualizado_por: user.username || 'Desconhecido' })
-            .eq('chave', 'meta_producao_diaria')
+        const { data, error } = await supabaseAdmin.from('configuracoes')
+            .upsert(
+                {
+                    chave: 'meta_producao_diaria',
+                    valor: metaValue,
+                    ultima_atualizacao: new Date().toISOString(),
+                    atualizado_por: user.username || 'Desconhecido'
+                },
+                {
+                    onConflict: 'chave',
+                    ignoreDuplicates: false
+                }
+            )
             .select();
 
-        if (updateError && updateError.code !== 'PGRST116') { 
-            throw updateError;
+        if (error) {
+            console.error('Erro Supabase ao salvar meta:', error);
+            return res.status(500).json({
+                message: 'Erro ao salvar a meta de produção.',
+                details: error.message || 'Detalhes desconhecidos.'
+            });
         }
 
-        if (!data || data.length === 0) { 
-            const { error: insertError } = await supabaseAdmin.from('configuracoes')
-                .insert({ chave: 'meta_producao_diaria', valor: meta, atualizado_por: user.username || 'Desconhecido' })
-                .select();
-            if (insertError) throw insertError;
-        }
-
-        cachedMeta = meta; 
-        res.status(200).json({ success: true, message: 'Meta atualizada com sucesso', meta });
+        res.status(200).json({ success: true, message: 'Meta atualizada com sucesso', meta: data[0].valor });
 
     } catch (error) {
-        console.error('Erro ao salvar nova meta no Supabase:', error.message);
-        res.status(500).json({ message: 'Erro ao salvar a meta de produção.', error: error.message });
+        console.error('Erro geral ao salvar nova meta no Supabase:', error.message);
+        res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
     }
 });
 
@@ -188,7 +186,7 @@ app.get('/api/data/lists', async (req, res) => {
     }
 });
 
-app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => { 
+app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
     console.log('Payload recebido no backend para /api/apontamentos/injetora:', req.body);
 
     const {
@@ -215,7 +213,7 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
                 {
                     tipo_injetora: tipoInjetora,
                     data_apontamento: dataApontamento,
-                    hora_apontamento: hora_apontamento, 
+                    hora_apontamento: hora_apontamento,
                     turno: turno,
                     maquina: maquina,
                     funcionario: funcionario,
@@ -274,7 +272,7 @@ app.get('/api/produtos/taxa-nc', authenticateToken, async (req, res) => {
                 peca,
                 totalInjetado,
                 totalPecasNC,
-                taxaNC: parseFloat(taxaNC.toFixed(2)) 
+                taxaNC: parseFloat(taxaNC.toFixed(2))
             };
         });
 
@@ -326,6 +324,9 @@ app.get('/api/apontamentos/injetora', async (req, res) => {
     }
 });
 
-export default app;
-;
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+});
 
+module.exports = app;
