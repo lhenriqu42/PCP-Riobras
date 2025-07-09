@@ -3,18 +3,21 @@ import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, CircularProgress, Alert, Button, Dialog, DialogActions,
     DialogContent, DialogContentText, DialogTitle, TextField, Grid, IconButton,
-    FormControl, InputLabel, Select, MenuItem
+    Collapse
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import ApontamentoService from '../services/ApontamentoService';
-import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { DatePicker, LocalizationProvider, TimePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { ptBR } from 'date-fns/locale';
+import { format } from 'date-fns';
 
 const MIN_AUTH_LEVEL = 2;
 
@@ -22,7 +25,7 @@ export default function ApontamentosManutencao() {
     const { user, loading: authLoading } = useAuth();
     const navigate = useNavigate();
 
-    const [apontamentos, setApontamentos] = useState([]);
+    const [apontamentosAgrupados, setApontamentosAgrupados] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [editingId, setEditingId] = useState(null);
@@ -34,19 +37,42 @@ export default function ApontamentosManutencao() {
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(new Date());
 
+    const [expandedGroups, setExpandedGroups] = useState({});
+
     const fetchApontamentos = useCallback(async () => {
         setLoading(true);
         setError('');
         try {
             const params = {};
             if (startDate) {
-                params.dataInicio = startDate.toISOString().split('T')[0];
+                params.dataInicio = format(startDate, 'yyyy-MM-dd');
             }
             if (endDate) {
-                params.dataFim = endDate.toISOString().split('T')[0];
+                params.dataFim = format(endDate, 'yyyy-MM-dd');
             }
             const data = await ApontamentoService.getApontamentosInjetora(params);
-            setApontamentos(data);
+
+            const groupedData = data.reduce((acc, currentApontamento) => {
+                const groupKey = `${currentApontamento.data_apontamento}-${currentApontamento.funcionario}-${currentApontamento.maquina}-${currentApontamento.peca}`;
+                if (!acc[groupKey]) {
+                    acc[groupKey] = {
+                        data_apontamento: currentApontamento.data_apontamento,
+                        funcionario: currentApontamento.funcionario,
+                        maquina: currentApontamento.maquina,
+                        peca: currentApontamento.peca,
+                        total_quantidade_injetada: 0,
+                        total_pecas_nc: 0,
+                        apontamentos: []
+                    };
+                }
+                acc[groupKey].total_quantidade_injetada += currentApontamento.quantidade_injetada || 0;
+                acc[groupKey].total_pecas_nc += currentApontamento.pecas_nc || 0;
+                acc[groupKey].apontamentos.push(currentApontamento);
+                return acc;
+            }, {});
+
+            setApontamentosAgrupados(Object.values(groupedData));
+
         } catch (err) {
             console.error('Erro ao buscar apontamentos:', err);
             setError('Não foi possível carregar os apontamentos. ' + (err.response?.data?.message || err.message));
@@ -67,7 +93,10 @@ export default function ApontamentosManutencao() {
 
     const handleEditClick = (apontamento) => {
         setEditingId(apontamento.id);
-        setEditedApontamento({ ...apontamento });
+        const [hours, minutes, seconds] = apontamento.hora_apontamento.split(':').map(Number);
+        const horaDate = new Date();
+        horaDate.setHours(hours, minutes, seconds, 0);
+        setEditedApontamento({ ...apontamento, hora_apontamento: horaDate });
     };
 
     const handleSaveClick = async (id) => {
@@ -77,6 +106,7 @@ export default function ApontamentosManutencao() {
                 quantidade_injetada: editedApontamento.quantidade_injetada,
                 pecas_nc: editedApontamento.pecas_nc,
                 observacoes: editedApontamento.observacoes,
+                hora_apontamento: format(editedApontamento.hora_apontamento, 'HH:mm:ss'),
             };
             await ApontamentoService.updateApontamentoInjetora(id, dataToUpdate);
             await fetchApontamentos();
@@ -103,6 +133,10 @@ export default function ApontamentosManutencao() {
         setEditedApontamento(prev => ({ ...prev, [name]: value === '' ? '' : Number(value) }));
     };
 
+    const handleTimeChange = (newValue) => {
+        setEditedApontamento(prev => ({ ...prev, hora_apontamento: newValue }));
+    };
+
     const handleDeleteClick = (apontamento) => {
         setApontamentoToDelete(apontamento);
         setOpenDeleteDialog(true);
@@ -117,12 +151,19 @@ export default function ApontamentosManutencao() {
         setError('');
         try {
             await ApontamentoService.deleteApontamentoInjetora(apontamentoToDelete.id);
-            await fetchApontamentos(); // Recarrega os dados após a exclusão
+            await fetchApontamentos();
             handleCloseDeleteDialog();
         } catch (err) {
             console.error('Erro ao deletar apontamento:', err);
             setError('Não foi possível deletar o apontamento. ' + (err.response?.data?.message || err.message));
         }
+    };
+
+    const handleToggleGroup = (groupKey) => {
+        setExpandedGroups(prev => ({
+            ...prev,
+            [groupKey]: !prev[groupKey]
+        }));
     };
 
     if (authLoading || loading) {
@@ -190,95 +231,142 @@ export default function ApontamentosManutencao() {
                         <Table size="small">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell>Data</TableCell>
-                                    <TableCell>Hora</TableCell>
-                                    <TableCell>Funcionário</TableCell>
-                                    <TableCell>Máquina</TableCell>
-                                    <TableCell>Produto</TableCell>
-                                    <TableCell align="right">Qtde. Injetada</TableCell>
-                                    <TableCell align="right">Peças NC</TableCell>
-                                    <TableCell>Observações</TableCell>
-                                    <TableCell align="center">Ações</TableCell>
+                                    <TableCell>Grupo (Data / Funcionário / Máquina / Produto)</TableCell>
+                                    <TableCell align="right">Total Qtde. Injetada</TableCell>
+                                    <TableCell align="right">Total Peças NC</TableCell>
+                                    <TableCell align="center">Expandir</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {apontamentos.length === 0 ? (
+                                {apontamentosAgrupados.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={9} align="center">Nenhum apontamento encontrado para o período.</TableCell>
+                                        <TableCell colSpan={4} align="center">Nenhum apontamento encontrado para o período.</TableCell>
                                     </TableRow>
                                 ) : (
-                                    apontamentos.map((apontamento) => (
-                                        <TableRow key={apontamento.id}>
-                                            <TableCell>{new Date(apontamento.data_apontamento).toLocaleDateString('pt-BR')}</TableCell>
-                                            <TableCell>{apontamento.hora_apontamento}</TableCell>
-                                            <TableCell>{apontamento.funcionario}</TableCell>
-                                            <TableCell>{apontamento.maquina}</TableCell>
-                                            <TableCell>{apontamento.peca}</TableCell>
-                                            <TableCell align="right">
-                                                {editingId === apontamento.id ? (
-                                                    <TextField
-                                                        name="quantidade_injetada"
-                                                        value={editedApontamento.quantidade_injetada}
-                                                        onChange={handleNumericChange}
-                                                        type="number"
+                                    apontamentosAgrupados.map((group) => (
+                                        <React.Fragment key={`${group.data_apontamento}-${group.funcionario}-${group.maquina}-${group.peca}`}>
+                                            <TableRow sx={{ '& > *': { borderBottom: 'unset' }, backgroundColor: '#f5f5f5' }}>
+                                                <TableCell component="th" scope="row">
+                                                    {new Date(group.data_apontamento).toLocaleDateString('pt-BR')} - {group.funcionario} - {group.maquina} - {group.peca}
+                                                </TableCell>
+                                                <TableCell align="right">{group.total_quantidade_injetada}</TableCell>
+                                                <TableCell align="right">{group.total_pecas_nc}</TableCell>
+                                                <TableCell align="center">
+                                                    <IconButton
+                                                        aria-label="expand row"
                                                         size="small"
-                                                        sx={{ width: 80 }}
-                                                    />
-                                                ) : (
-                                                    apontamento.quantidade_injetada
-                                                )}
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                {editingId === apontamento.id ? (
-                                                    <TextField
-                                                        name="pecas_nc"
-                                                        value={editedApontamento.pecas_nc}
-                                                        onChange={handleNumericChange}
-                                                        type="number"
-                                                        size="small"
-                                                        sx={{ width: 80 }}
-                                                    />
-                                                ) : (
-                                                    apontamento.pecas_nc
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {editingId === apontamento.id ? (
-                                                    <TextField
-                                                        name="observacoes"
-                                                        value={editedApontamento.observacoes}
-                                                        onChange={handleChange}
-                                                        size="small"
-                                                        multiline
-                                                        rows={1}
-                                                        sx={{ minWidth: 150 }}
-                                                    />
-                                                ) : (
-                                                    apontamento.observacoes || '-'
-                                                )}
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                {editingId === apontamento.id ? (
-                                                    <>
-                                                        <IconButton color="primary" onClick={() => handleSaveClick(apontamento.id)} aria-label="Salvar">
-                                                            <SaveIcon />
-                                                        </IconButton>
-                                                        <IconButton color="secondary" onClick={handleCancelClick} aria-label="Cancelar">
-                                                            <CancelIcon />
-                                                        </IconButton>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <IconButton color="info" onClick={() => handleEditClick(apontamento)} aria-label="Editar">
-                                                            <EditIcon />
-                                                        </IconButton>
-                                                        <IconButton color="error" onClick={() => handleDeleteClick(apontamento)} aria-label="Deletar">
-                                                            <DeleteIcon />
-                                                        </IconButton>
-                                                    </>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
+                                                        onClick={() => handleToggleGroup(`${group.data_apontamento}-${group.funcionario}-${group.maquina}-${group.peca}`)}
+                                                    >
+                                                        {expandedGroups[`${group.data_apontamento}-${group.funcionario}-${group.maquina}-${group.peca}`] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                                    </IconButton>
+                                                </TableCell>
+                                            </TableRow>
+                                            <TableRow>
+                                                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+                                                    <Collapse in={expandedGroups[`${group.data_apontamento}-${group.funcionario}-${group.maquina}-${group.peca}`]} timeout="auto" unmountOnExit>
+                                                        <Box sx={{ margin: 1 }}>
+                                                            <Typography variant="h6" gutterBottom component="div">
+                                                                Detalhes dos Apontamentos
+                                                            </Typography>
+                                                            <Table size="small" aria-label="apontamentos-detalhes">
+                                                                <TableHead>
+                                                                    <TableRow>
+                                                                        <TableCell>Hora</TableCell>
+                                                                        <TableCell align="right">Qtde. Injetada</TableCell>
+                                                                        <TableCell align="right">Peças NC</TableCell>
+                                                                        <TableCell>Observações</TableCell>
+                                                                        <TableCell align="center">Ações</TableCell>
+                                                                    </TableRow>
+                                                                </TableHead>
+                                                                <TableBody>
+                                                                    {group.apontamentos.map((apontamento) => (
+                                                                        <TableRow key={apontamento.id}>
+                                                                            <TableCell>
+                                                                                {editingId === apontamento.id ? (
+                                                                                    <TimePicker
+                                                                                        label="Hora"
+                                                                                        value={editedApontamento.hora_apontamento}
+                                                                                        onChange={handleTimeChange}
+                                                                                        renderInput={(params) => <TextField {...params} fullWidth size="small" sx={{ width: 100 }} />}
+                                                                                        format="HH:mm"
+                                                                                    />
+                                                                                ) : (
+                                                                                    apontamento.hora_apontamento
+                                                                                )}
+                                                                            </TableCell>
+                                                                            <TableCell align="right">
+                                                                                {editingId === apontamento.id ? (
+                                                                                    <TextField
+                                                                                        name="quantidade_injetada"
+                                                                                        value={editedApontamento.quantidade_injetada}
+                                                                                        onChange={handleNumericChange}
+                                                                                        type="number"
+                                                                                        size="small"
+                                                                                        sx={{ width: 80 }}
+                                                                                    />
+                                                                                ) : (
+                                                                                    apontamento.quantidade_injetada
+                                                                                )}
+                                                                            </TableCell>
+                                                                            <TableCell align="right">
+                                                                                {editingId === apontamento.id ? (
+                                                                                    <TextField
+                                                                                        name="pecas_nc"
+                                                                                        value={editedApontamento.pecas_nc}
+                                                                                        onChange={handleNumericChange}
+                                                                                        type="number"
+                                                                                        size="small"
+                                                                                        sx={{ width: 80 }}
+                                                                                    />
+                                                                                ) : (
+                                                                                    apontamento.pecas_nc
+                                                                                )}
+                                                                            </TableCell>
+                                                                            <TableCell>
+                                                                                {editingId === apontamento.id ? (
+                                                                                    <TextField
+                                                                                        name="observacoes"
+                                                                                        value={editedApontamento.observacoes}
+                                                                                        onChange={handleChange}
+                                                                                        size="small"
+                                                                                        multiline
+                                                                                        rows={1}
+                                                                                        sx={{ minWidth: 150 }}
+                                                                                    />
+                                                                                ) : (
+                                                                                    apontamento.observacoes || '-'
+                                                                                )}
+                                                                            </TableCell>
+                                                                            <TableCell align="center">
+                                                                                {editingId === apontamento.id ? (
+                                                                                    <>
+                                                                                        <IconButton color="primary" onClick={() => handleSaveClick(apontamento.id)} aria-label="Salvar">
+                                                                                            <SaveIcon />
+                                                                                        </IconButton>
+                                                                                        <IconButton color="secondary" onClick={handleCancelClick} aria-label="Cancelar">
+                                                                                            <CancelIcon />
+                                                                                        </IconButton>
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <>
+                                                                                        <IconButton color="info" onClick={() => handleEditClick(apontamento)} aria-label="Editar">
+                                                                                            <EditIcon />
+                                                                                        </IconButton>
+                                                                                        <IconButton color="error" onClick={() => handleDeleteClick(apontamento)} aria-label="Deletar">
+                                                                                            <DeleteIcon />
+                                                                                        </IconButton>
+                                                                                    </>
+                                                                                )}
+                                                                            </TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </Box>
+                                                    </Collapse>
+                                                </TableCell>
+                                            </TableRow>
+                                        </React.Fragment>
                                     ))
                                 )}
                             </TableBody>
@@ -295,7 +383,7 @@ export default function ApontamentosManutencao() {
                     <DialogTitle id="alert-dialog-title">{"Confirmar Exclusão"}</DialogTitle>
                     <DialogContent>
                         <DialogContentText id="alert-dialog-description">
-                            Tem certeza que deseja excluir o apontamento de {apontamentoToDelete?.funcionario} para o produto {apontamentoToDelete?.peca} ({apontamentoToDelete?.quantidade_injetada} injetadas, {apontamentoToDelete?.pecas_nc} NC) na data {apontamentoToDelete?.data_apontamento ? new Date(apontamentoToDelete.data_apontamento).toLocaleDateString('pt-BR') : ''}?
+                            Tem certeza que deseja excluir o apontamento de {apontamentoToDelete?.funcionario} para o produto {apontamentoToDelete?.peca} ({apontamentoToDelete?.quantidade_injetada} injetadas, {apontamentoToDelete?.pecas_nc} NC) na data {apontamentoToDelete?.data_apontamento ? new Date(apontamentoToDelete.data_apontamento).toLocaleDateString('pt-BR') : ''} às {apontamentoToDelete?.hora_apontamento}?
                             Esta ação não pode ser desfeita.
                         </DialogContentText>
                     </DialogContent>
