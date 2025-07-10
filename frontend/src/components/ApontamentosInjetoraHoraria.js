@@ -27,6 +27,7 @@ import axios from 'axios';
 import moment from 'moment';
 import REACT_APP_API_URL from '../api'; 
 import ApontamentoService from '../services/ApontamentoService'; 
+import RegistrarImprodutividadeModal from '../components/RegistrarImprodutividadeModal'; 
 
 export default function ApontamentosInjetoraHoraria() {
     const location = useLocation();
@@ -47,6 +48,8 @@ export default function ApontamentosInjetoraHoraria() {
 
     const [editingRowId, setEditingRowId] = useState(null); 
     const [editedRowData, setEditedRowData] = useState({}); 
+
+    const [isImprodutividadeModalOpen, setIsImprodutividadeModalOpen] = useState(false); 
 
     useEffect(() => {
         if (!initialData) {
@@ -131,7 +134,7 @@ export default function ApontamentosInjetoraHoraria() {
             }
 
         } catch (err) {
-            console.error('Erro ao buscar apontamentos existentes:', err);
+            console.error(err);
             setError('Erro ao carregar apontamentos existentes. Por favor, recarregue a página.');
             setApontamentosHorarios(entries); 
         }
@@ -193,7 +196,7 @@ export default function ApontamentosInjetoraHoraria() {
                 navigate('/dashboard/injetora');
             }
         } catch (err) {
-            console.error('Erro ao registrar apontamento horário:', err);
+            console.error(err);
             setError('Erro ao registrar apontamento horário. Tente novamente.');
         } finally {
             setLoading(false);
@@ -222,7 +225,7 @@ export default function ApontamentosInjetoraHoraria() {
             setEditingRowId(null);
             setEditedRowData({});
         } catch (err) {
-            console.error('Erro ao salvar edição do apontamento:', err);
+            console.error(err);
             setError('Não foi possível salvar a edição do apontamento. ' + (err.response?.data?.message || err.message));
         } finally {
             setLoading(false);
@@ -302,7 +305,7 @@ export default function ApontamentosInjetoraHoraria() {
                         updatedApontamentos[i].tipo_registro = currentPayload.tipo_registro;
                         setApontamentosHorarios([...updatedApontamentos]);
                     } catch (err) {
-                        console.error(`Erro ao registrar hora ${updatedApontamentos[i].hora} como finalizada:`, err);
+                        console.error(err);
                         setError(`Erro ao registrar algumas horas como finalizadas.`);
                         setLoading(false);
                         return;
@@ -318,13 +321,23 @@ export default function ApontamentosInjetoraHoraria() {
         handleCloseMenu();
     };
 
-
     const handleTableKeyPress = (e, index, fieldName) => {
         if (e.key === 'Enter' && index === currentHourIndex && editingRowId === null) {
             if (fieldName === 'pecas_nc' || fieldName === 'quantidade_injetada') {
                 handleRegisterHour(index);
             }
         }
+    };
+
+    const handleOpenImprodutividadeModal = () => { 
+        setIsImprodutividadeModalOpen(true);
+    };
+
+    const handleCloseImprodutividadeModal = () => { 
+        setIsImprodutividadeModalOpen(false);
+    };
+
+    const handleImprodutividadeSuccess = () => { 
     };
 
     if (error && !initialData) {
@@ -550,7 +563,26 @@ export default function ApontamentosInjetoraHoraria() {
                         </TableBody>
                     </Table>
                 </TableContainer>
+
+                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button
+                        variant="contained"
+                        color="warning" 
+                        onClick={handleOpenImprodutividadeModal}
+                        disabled={loading}
+                    >
+                        Registrar Improdutividade
+                    </Button>
+                </Box>
             </Paper>
+
+            <RegistrarImprodutividadeModal
+                open={isImprodutividadeModalOpen}
+                onClose={handleCloseImprodutividadeModal}
+                dataApontamento={initialData?.dataApontamento}
+                apontamentosHorarios={apontamentosHorarios}
+                onSuccess={handleImprodutividadeSuccess}
+            />
         </Box>
     );
 }

@@ -324,6 +324,103 @@ app.get('/api/apontamentos/injetora', async (req, res) => {
     }
 });
 
+app.put('/api/apontamentos/injetora/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { quantidade_injetada, pecas_nc, observacoes, tipo_registro } = req.body;
+
+    const quantidade_efetiva = quantidade_injetada - pecas_nc;
+
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('apontamentos_injetora')
+            .update({
+                quantidade_injetada: quantidade_injetada,
+                pecas_nc: pecas_nc,
+                observacoes: observacoes,
+                tipo_registro: tipo_registro,
+                quantidade_efetiva: quantidade_efetiva,
+                ultima_atualizacao: new Date().toISOString()
+            })
+            .eq('id', id)
+            .select();
+
+        if (error) {
+            console.error('Erro Supabase ao atualizar apontamento:', error);
+            return res.status(500).json({
+                message: 'Erro ao atualizar apontamento.',
+                details: error.message || error.details || error.hint || error.code || 'Detalhes desconhecidos.',
+            });
+        }
+
+        if (data.length === 0) {
+            return res.status(404).json({ message: 'Apontamento não encontrado.' });
+        }
+
+        res.status(200).json(data[0]);
+    } catch (error) {
+        console.error('Erro geral ao atualizar apontamento:', error.message);
+        res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
+    }
+});
+
+app.get('/api/setores', authenticateToken, async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('setores')
+            .select('*')
+            .order('nome_setor', { ascending: true });
+
+        if (error) {
+            console.error('Erro Supabase ao buscar setores:', error);
+            return res.status(500).json({
+                message: 'Erro ao buscar lista de setores.',
+                details: error.message || 'Detalhes desconhecidos.',
+            });
+        }
+        res.status(200).json(data);
+    } catch (error) {
+        console.error('Erro geral ao buscar setores:', error.message);
+        res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
+    }
+});
+
+app.post('/api/improdutividade', authenticateToken, async (req, res) => {
+    const { setor_id, data_improdutividade, hora_improdutividade, causa, pecas_perdidas_estimadas } = req.body;
+    const usuario_registro = req.user ? req.user.username : 'Desconhecido';
+
+    if (!setor_id || !data_improdutividade || !hora_improdutividade || pecas_perdidas_estimadas === undefined || pecas_perdidas_estimadas === null) {
+        return res.status(400).json({ message: 'Campos obrigatórios faltando: setor_id, data_improdutividade, hora_improdutividade, pecas_perdidas_estimadas.' });
+    }
+
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('improdutividades')
+            .insert([
+                {
+                    setor_id: setor_id,
+                    data_improdutividade: data_improdutividade,
+                    hora_improdutividade: hora_improdutividade,
+                    causa: causa,
+                    pecas_perdidas_estimadas: pecas_perdidas_estimadas,
+                    usuario_registro: usuario_registro
+                }
+            ])
+            .select();
+
+        if (error) {
+            console.error('Erro Supabase ao inserir improdutividade:', error);
+            return res.status(500).json({
+                message: 'Erro ao registrar improdutividade.',
+                details: error.message || error.details || error.hint || error.code || 'Detalhes desconhecidos.',
+            });
+        }
+        res.status(201).json(data[0]);
+    } catch (error) {
+        console.error('Erro geral ao registrar improdutividade:', error.message);
+        res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
+    }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);
