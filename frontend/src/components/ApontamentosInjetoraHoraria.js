@@ -16,18 +16,18 @@ import {
     Menu,
     MenuItem,
     Tooltip,
-    IconButton, 
+    IconButton,
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import EditIcon from '@mui/icons-material/Edit'; 
-import SaveIcon from '@mui/icons-material/Save'; 
-import CancelIcon from '@mui/icons-material/Cancel'; 
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import moment from 'moment';
-import REACT_APP_API_URL from '../api'; 
-import ApontamentoService from '../services/ApontamentoService'; 
-import RegistrarImprodutividadeModal from '../components/RegistrarImprodutividadeModal'; 
+import REACT_APP_API_URL from '../api';
+import ApontamentoService from '../services/ApontamentoService';
+import RegistrarImprodutividadeModal from '../components/RegistrarImprodutividadeModal';
 
 export default function ApontamentosInjetoraHoraria() {
     const location = useLocation();
@@ -44,12 +44,12 @@ export default function ApontamentosInjetoraHoraria() {
     const [anchorEl, setAnchorEl] = useState(null);
     const openMenu = Boolean(anchorEl);
 
-    const inputRef = useRef(null);
+    const inputRefs = useRef({});
 
-    const [editingRowId, setEditingRowId] = useState(null); 
-    const [editedRowData, setEditedRowData] = useState({}); 
+    const [editingRowId, setEditingRowId] = useState(null);
+    const [editedRowData, setEditedRowData] = useState({});
 
-    const [isImprodutividadeModalOpen, setIsImprodutividadeModalOpen] = useState(false); 
+    const [isImprodutividadeModalOpen, setIsImprodutividadeModalOpen] = useState(false);
 
     useEffect(() => {
         if (!initialData) {
@@ -61,8 +61,8 @@ export default function ApontamentosInjetoraHoraria() {
     }, [initialData, navigate]);
 
     useEffect(() => {
-        if (inputRef.current && editingRowId === null) {
-            inputRef.current.focus();
+        if (inputRefs.current[`quantidade_injetada-${currentHourIndex}`] && editingRowId === null) {
+            inputRefs.current[`quantidade_injetada-${currentHourIndex}`].focus();
         }
     }, [currentHourIndex, editingRowId]);
 
@@ -86,11 +86,11 @@ export default function ApontamentosInjetoraHoraria() {
             entries.push({
                 hora,
                 quantidade_injetada: '',
-                pecas_nc: '',
+                pecas_nc: 0,
                 observacoes: '',
                 tipo_registro: 'producao',
                 finalizado: false,
-                id: null, 
+                id: null,
             });
             current.add(1, 'hour');
         }
@@ -104,7 +104,7 @@ export default function ApontamentosInjetoraHoraria() {
                 peca: peca,
             });
 
-            const existingApontamentos = response; 
+            const existingApontamentos = response;
             const updatedEntries = entries.map(entry => {
                 const existing = existingApontamentos.find(
                     ap => ap.hora_apontamento === entry.hora
@@ -117,7 +117,7 @@ export default function ApontamentosInjetoraHoraria() {
                         observacoes: existing.observacoes,
                         tipo_registro: existing.tipo_registro,
                         finalizado: true,
-                        id: existing.id, 
+                        id: existing.id,
                     };
                 }
                 return entry;
@@ -136,14 +136,14 @@ export default function ApontamentosInjetoraHoraria() {
         } catch (err) {
             console.error(err);
             setError('Erro ao carregar apontamentos existentes. Por favor, recarregue a página.');
-            setApontamentosHorarios(entries); 
+            setApontamentosHorarios(entries);
         }
     };
 
     const handleChange = (e, index) => {
         const { name, value } = e.target;
         const newApontamentos = [...apontamentosHorarios];
-        newApontamentos[index][name] = value;
+        newApontamentos[index][name] = name.includes('quantidade') || name.includes('pecas') ? (value === '' ? '' : Number(value)) : value;
         setApontamentosHorarios(newApontamentos);
     };
 
@@ -260,7 +260,8 @@ export default function ApontamentosInjetoraHoraria() {
         currentEntry.pecas_nc = 0;
         currentEntry.observacoes = `Operação de ${type.toUpperCase()}`;
         currentEntry.tipo_registro = type;
-
+        
+        setApontamentosHorarios(newApontamentos);
         handleRegisterHour(index);
         handleCloseMenu();
     };
@@ -323,21 +324,31 @@ export default function ApontamentosInjetoraHoraria() {
 
     const handleTableKeyPress = (e, index, fieldName) => {
         if (e.key === 'Enter' && index === currentHourIndex && editingRowId === null) {
-            if (fieldName === 'pecas_nc' || fieldName === 'quantidade_injetada') {
+            const nextFieldIndex = {
+                'quantidade_injetada': 'pecas_nc',
+                'pecas_nc': 'observacoes',
+                'observacoes': 'submit',
+            };
+
+            const nextField = nextFieldIndex[fieldName];
+
+            if (nextField === 'submit') {
                 handleRegisterHour(index);
+            } else if (inputRefs.current[`${nextField}-${index}`]) {
+                inputRefs.current[`${nextField}-${index}`].focus();
             }
         }
     };
 
-    const handleOpenImprodutividadeModal = () => { 
+    const handleOpenImprodutividadeModal = () => {
         setIsImprodutividadeModalOpen(true);
     };
 
-    const handleCloseImprodutividadeModal = () => { 
+    const handleCloseImprodutividadeModal = () => {
         setIsImprodutividadeModalOpen(false);
     };
 
-    const handleImprodutividadeSuccess = () => { 
+    const handleImprodutividadeSuccess = () => {
     };
 
     if (error && !initialData) {
@@ -422,14 +433,14 @@ export default function ApontamentosInjetoraHoraria() {
                         <TableBody>
                             {apontamentosHorarios.map((entry, index) => (
                                 <TableRow
-                                    key={entry.id || index} 
+                                    key={entry.id || index}
                                     sx={{
                                         backgroundColor: entry.finalizado ? '#f0f0f0' : 'inherit',
                                         '&.Mui-selected': {
-                                            backgroundColor: '#e0f7fa', 
+                                            backgroundColor: '#e0f7fa',
                                         },
                                     }}
-                                    selected={editingRowId === entry.id} 
+                                    selected={editingRowId === entry.id}
                                 >
                                     <TableCell>{entry.hora}</TableCell>
                                     <TableCell>
@@ -449,9 +460,9 @@ export default function ApontamentosInjetoraHoraria() {
                                                 onChange={(e) => handleChange(e, index)}
                                                 type="number"
                                                 size="small"
-                                                disabled={index !== currentHourIndex || entry.finalizado || entry.tipo_registro !== 'producao'}
+                                                disabled={index !== currentHourIndex || entry.finalizado && entry.tipo_registro !== 'producao'}
                                                 sx={{ width: 100 }}
-                                                inputRef={index === currentHourIndex && editingRowId === null ? inputRef : null}
+                                                inputRef={el => inputRefs.current[`quantidade_injetada-${index}`] = el}
                                                 onKeyPress={(e) => handleTableKeyPress(e, index, 'quantidade_injetada')}
                                             />
                                         )}
@@ -473,8 +484,9 @@ export default function ApontamentosInjetoraHoraria() {
                                                 onChange={(e) => handleChange(e, index)}
                                                 type="number"
                                                 size="small"
-                                                disabled={index !== currentHourIndex || entry.finalizado || entry.tipo_registro !== 'producao'}
+                                                disabled={index !== currentHourIndex || entry.finalizado && entry.tipo_registro !== 'producao'}
                                                 sx={{ width: 100 }}
+                                                inputRef={el => inputRefs.current[`pecas_nc-${index}`] = el}
                                                 onKeyPress={(e) => handleTableKeyPress(e, index, 'pecas_nc')}
                                             />
                                         )}
@@ -498,6 +510,7 @@ export default function ApontamentosInjetoraHoraria() {
                                                 fullWidth
                                                 size="small"
                                                 disabled={index !== currentHourIndex || entry.finalizado}
+                                                inputRef={el => inputRefs.current[`observacoes-${index}`] = el}
                                                 onKeyPress={(e) => handleTableKeyPress(e, index, 'observacoes')}
                                             />
                                         )}
@@ -567,7 +580,7 @@ export default function ApontamentosInjetoraHoraria() {
                 <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
                     <Button
                         variant="contained"
-                        color="warning" 
+                        color="warning"
                         onClick={handleOpenImprodutividadeModal}
                         disabled={loading}
                     >
