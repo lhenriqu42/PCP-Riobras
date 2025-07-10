@@ -200,11 +200,9 @@ export default function DashboardInjetora() {
         });
 
         setAggregatedData(sortedTableData);
-
     }, []);
 
-
-    const handleApplyFilters = useCallback(async () => {
+    const fetchAndProcessApontamentos = useCallback(async (currentMetaValue) => {
         setError('');
         setLoadingFilters(true);
         try {
@@ -217,18 +215,18 @@ export default function DashboardInjetora() {
             };
             const response = await axios.get(`${REACT_APP_API_URL}/api/apontamentos/injetora`, { params });
             setApontamentos(response.data);
-            processApontamentosForDashboard(response.data, metaProducao);
+            processApontamentosForDashboard(response.data, currentMetaValue);
         } catch (err) {
             console.error('Erro ao buscar apontamentos filtrados:', err);
             setError('Erro ao buscar dados para o relatório.');
         } finally {
             setLoadingFilters(false);
         }
-    }, [startDate, endDate, selectedPeca, selectedTipoInjetora, selectedTurno, metaProducao, processApontamentosForDashboard]);
+    }, [startDate, endDate, selectedPeca, selectedTipoInjetora, selectedTurno, processApontamentosForDashboard]);
 
 
     useEffect(() => {
-        const fetchDataAndMeta = async () => {
+        const fetchDataAndMetaAndApontamentos = async () => {
             try {
                 setLoadingFilters(true);
                 const listsResponse = await axios.get(`${REACT_APP_API_URL}/api/data/lists`);
@@ -237,8 +235,11 @@ export default function DashboardInjetora() {
                 setMaquinasList(uniqueTiposInjetora);
 
                 const metaResponse = await axios.get(`${REACT_APP_API_URL}/api/meta-producao`);
-                setMetaProducao(Number(metaResponse.data.meta || 0));
-                setNewMetaValue(Number(metaResponse.data.meta || 0));
+                const initialMeta = Number(metaResponse.data.meta || 0);
+                setMetaProducao(initialMeta);
+                setNewMetaValue(initialMeta);
+
+                await fetchAndProcessApontamentos(initialMeta);
 
             } catch (err) {
                 console.error('Erro ao carregar dados iniciais:', err);
@@ -247,13 +248,14 @@ export default function DashboardInjetora() {
                 setLoadingFilters(false);
             }
         };
-        fetchDataAndMeta();
-    }, []);
+        fetchDataAndMetaAndApontamentos();
+    }, [fetchAndProcessApontamentos]);
 
     useEffect(() => {
-        handleApplyFilters();
-    }, [handleApplyFilters]);
-
+        if (!loadingFilters && metaProducao !== 0) {
+            fetchAndProcessApontamentos(metaProducao);
+        }
+    }, [startDate, endDate, selectedPeca, selectedTipoInjetora, selectedTurno, metaProducao, fetchAndProcessApontamentos, loadingFilters]);
 
     const handlePecaChange = (event, newValue) => {
         setSelectedPeca(newValue);
