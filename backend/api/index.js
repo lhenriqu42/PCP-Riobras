@@ -256,12 +256,12 @@ app.get('/api/produtos/taxa-nc', authenticateToken, async (req, res) => {
             });
         }
         const produtosData = apontamentos.reduce((acc, apontamento) => {
-            const { peca, quantidade_injetada, pecas_nc } = apontamento;
+            const { peca, quantidade_injetada, total_pecas_nc_producao } = apontamento; // Renomeado
             if (!acc[peca]) {
                 acc[peca] = { totalInjetado: 0, totalPecasNC: 0 };
             }
             acc[peca].totalInjetado += quantidade_injetada || 0;
-            acc[peca].totalPecasNC += pecas_nc || 0;
+            acc[peca].totalPecasNC += total_pecas_nc_producao || 0; // Usar total_pecas_nc_producao
             return acc;
         }, {});
 
@@ -285,27 +285,28 @@ app.get('/api/produtos/taxa-nc', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/apontamentos/injetora', async (req, res) => {
-    const { dataInicio, dataFim, peca, tipoInjetora, turno } = req.query;
+    const { dataApontamento, turno, maquina, funcionario, peca } = req.query;
 
     try {
         let query = supabase.from('apontamentos_injetora').select('*');
 
-        if (dataInicio && dataFim) {
-            query = query.gte('data_apontamento', dataInicio).lte('data_apontamento', dataFim);
-        }
-        if (peca) {
-            query = query.eq('peca', peca);
-        }
-        if (tipoInjetora) {
-            query = query.eq('tipo_injetora', tipoInjetora);
+        if (dataApontamento) {
+            query = query.eq('data_apontamento', dataApontamento);
         }
         if (turno) {
             query = query.eq('turno', turno);
         }
+        if (maquina) {
+            query = query.eq('maquina', maquina);
+        }
+        if (funcionario) {
+            query = query.eq('funcionario', funcionario);
+        }
+        if (peca) {
+            query = query.eq('peca', peca);
+        }
 
-        query = query
-            .order('data_apontamento', { ascending: true })
-            .order('hora_apontamento', { ascending: true });
+        query = query.order('hora_apontamento', { ascending: true });
 
         const { data, error } = await query;
 
@@ -385,41 +386,109 @@ app.get('/api/setores', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/improdutividade', authenticateToken, async (req, res) => {
-    const { setor_id, data_improdutividade, hora_improdutividade, causa, pecas_perdidas_estimadas } = req.body;
+    const { setor_id, apontamento_injetora_id, data_improdutividade, hora_improdutividade, causa, pecas_transferidas } = req.body;
     const usuario_registro = req.user ? req.user.username : 'Desconhecido';
 
-    if (!setor_id || !data_improdutividade || !hora_improdutividade || pecas_perdidas_estimadas === undefined || pecas_perdidas_estimadas === null) {
-        return res.status(400).json({ message: 'Campos obrigatórios faltando: setor_id, data_improdutividade, hora_improdutividade, pecas_perdidas_estimadas.' });
+    if (!setor_id || !apontamento_injetora_id || !data_improdutividade || !hora_improdutividade || pecas_transferidas === undefined || pecas_transferidas === null) {
+        return res.status(400).json({ message: 'Campos obrigatórios faltando: setor_id, apontamento_injetora_id, data_improdutividade, hora_improdutividade, pecas_transferidas.' });
     }
 
     try {
-        const { data, error } = await supabaseAdmin
-            .from('improdutividades')
+        const { data: improdutividadeData, error: improdutividadeError } = await supabaseAdmin
+            .from('improdutividade_setor')
             .insert([
                 {
                     setor_id: setor_id,
+                    apontamento_injetora_id: apontamento_injetora_id,
                     data_improdutividade: data_improdutividade,
                     hora_improdutividade: hora_improdutividade,
                     causa: causa,
-                    pecas_perdidas_estimadas: pecas_perdidas_estimadas,
+                    pecas_transferidas: pecas_transferidas,
                     usuario_registro: usuario_registro
                 }
             ])
             .select();
 
-        if (error) {
-            console.error('Erro Supabase ao inserir improdutividade:', error);
+        if (improdutividadeError) {
+            console.error('Erro Supabase ao inserir improdutividade:', improdutividadeError);
             return res.status(500).json({
                 message: 'Erro ao registrar improdutividade.',
-                details: error.message || error.details || error.hint || error.code || 'Detalhes desconhecidos.',
+                details: improdutividadeError.message || improdutividadeError.details || improdutividadeError.hint || improdutividadeError.code || 'Detalhes desconhecidos.',
             });
         }
-        res.status(201).json(data[0]);
+
+        const { data: apontamentoData, error: apontamentoError } = await supabaseAdmin
+            .from('apontamentos_injetora')
+            .select('pecas_nc_transferidas')
+            .eq('id', apontamento_injetora_id)
+            .single();
+
+        if (apontamentoError && apontamentoError.code !== 'PGRST116') { // PGRST116 é "No rows found"
+            console.error('Erro Supabase ao buscar apontamento para atualização:', apontamentoError);
+            return res.status(500).json({ message: 'Erro ao buscar apontamento para atualização.' });
+        }
+
+        const currentPecasNCTransferidas = apontamentoData ? (apontamentoData.pecas_nc_transferidas || 0) : 0;
+        const newPecasNCTransferidas = currentPecasNCTransferidas + pecas_transferidas;
+
+        const { error: updateError } = await supabaseAdmin
+            .from('apontamentos_injetora')
+            .update({ pecas_nc_transferidas: newPecasNCTransferidas })
+            .eq('id', apontamento_injetora_id);
+
+        if (updateError) {
+            console.error('Erro Supabase ao atualizar pecas_nc_transferidas:', updateError);
+            return res.status(500).json({
+                message: 'Erro ao atualizar contagem de peças NC transferidas no apontamento.',
+                details: updateError.message || updateError.details || updateError.hint || updateError.code || 'Detalhes desconhecidos.',
+            });
+        }
+
+        res.status(201).json(improdutividadeData[0]);
     } catch (error) {
-        console.error('Erro geral ao registrar improdutividade:', error.message);
+        console.error('Erro geral ao registrar improdutividade e atualizar apontamento:', error.message);
         res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
     }
 });
+
+
+app.get('/api/improdutividade/analise', authenticateToken, async (req, res) => {
+    const { dataInicio, dataFim, setorId } = req.query;
+
+    try {
+        let query = supabase
+            .from('improdutividade_setor')
+            .select(`
+                *,
+                setores (
+                    nome_setor
+                )
+            `);
+
+        if (dataInicio && dataFim) {
+            query = query.gte('data_improdutividade', dataInicio).lte('data_improdutividade', dataFim);
+        }
+        if (setorId) {
+            query = query.eq('setor_id', setorId);
+        }
+
+        const { data, error } = await query.order('data_improdutividade', { ascending: true }).order('hora_improdutividade', { ascending: true });
+
+        if (error) {
+            console.error('Erro Supabase ao buscar dados de improdutividade para análise:', error);
+            return res.status(500).json({
+                message: 'Erro ao buscar dados de improdutividade.',
+                details: error.message || error.details || error.hint || error.code || 'Detalhes desconhecidos.',
+            });
+        }
+
+        res.status(200).json(data);
+    } catch (error) {
+        console.error('Erro geral ao buscar dados de improdutividade para análise:', error.message);
+        res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
+    }
+});
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

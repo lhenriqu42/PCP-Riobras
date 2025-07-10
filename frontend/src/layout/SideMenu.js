@@ -12,7 +12,8 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import HomeIcon from '@mui/icons-material/Home';
 import QualityIcon from '@mui/icons-material/CheckCircleOutline';
-import BuildIcon from '@mui/icons-material/Build'; 
+import BuildIcon from '@mui/icons-material/Build';
+import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing'; 
 
 import { useAuth } from '../context/AuthContext';
 
@@ -37,22 +38,31 @@ export default function SideMenu() {
         </ListItem>
 
         {user && user.level >= 2 && (
-          <ListItem disablePadding>
-            <ListItemButton component={NavLink} to="/apontamentos/manutencao">
-              <ListItemIcon><BuildIcon /></ListItemIcon>
-              <ListItemText primary="Apontamentos Manutenção" />
-            </ListItemButton>
-          </ListItem>
+          <>
+            <ListItem disablePadding>
+              <ListItemButton component={NavLink} to="/apontamentos/manutencao">
+                <ListItemIcon><BuildIcon /></ListItemIcon>
+                <ListItemText primary="Apontamentos Manutenção" />
+              </ListItemButton>
+            </ListItem>
+
+            <ListItem disablePadding>
+              <ListItemButton component={NavLink} to="/dashboard/qualidade">
+                <ListItemIcon><QualityIcon /></ListItemIcon>
+                <ListItemText primary="Análise de Qualidade" />
+              </ListItemButton>
+            </ListItem>
+
+            {}
+            <ListItem disablePadding>
+              <ListItemButton component={NavLink} to="/analise/improdutividade">
+                <ListItemIcon><PrecisionManufacturingIcon /></ListItemIcon>
+                <ListItemText primary="Análise de Improdutividade" />
+              </ListItemButton>
+            </ListItem>
+          </>
         )}
 
-        {user && user.level >= 2 && (
-          <ListItem disablePadding>
-            <ListItemButton component={NavLink} to="/dashboard/qualidade">
-              <ListItemIcon><QualityIcon /></ListItemIcon>
-              <ListItemText primary="Análise de Qualidade" />
-            </ListItemButton>
-          </ListItem>
-        )}
         <ListItem disablePadding>
           <ListItemButton component={NavLink} to="/home">
             <ListItemIcon><HomeIcon /></ListItemIcon>

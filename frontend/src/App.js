@@ -7,6 +7,7 @@ import ApontamentosInjetoraHoraria from './components/ApontamentosInjetoraHorari
 import DashboardInjetora from './pages/DashboardInjetora';
 import ProductQualityDashboard from './pages/ProductQualityDashboard';
 import ApontamentosManutencao from './pages/ApontamentosManutencao';
+import AnaliseImprodutividade from './pages/AnaliseImprodutividade';
 import Layout from './layout/Layout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -69,17 +70,24 @@ function App() {
                   </PrivateRoute>
                 }
               />
-              {}
               <Route
-                path="apontamentos/manutencao"
+                path="analise/improdutividade" 
                 element={
-                  <PrivateRoute requiredLevel={2}> {}
-                    <ApontamentosManutencao />
+                  <PrivateRoute requiredLevel={2}>
+                    <AnaliseImprodutividade />
                   </PrivateRoute>
                 }
               />
 
               {}
+              <Route
+                path="apontamentos/manutencao"
+                element={
+                  <PrivateRoute requiredLevel={2}>
+                    <ApontamentosManutencao />
+                  </PrivateRoute>
+                }
+              />
               <Route path="apontamentos/injetora/inicial" element={<ApontamentosInjetoraInicial />} />
               <Route path="apontamentos/injetora/horaria" element={<ApontamentosInjetoraHoraria />} />
 

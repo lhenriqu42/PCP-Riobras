@@ -32,12 +32,13 @@ const style = {
 export default function RegistrarImprodutividadeModal({ open, onClose, dataApontamento, apontamentosHorarios, onSuccess }) {
     const [setores, setSetores] = useState([]);
     const [selectedSetorId, setSelectedSetorId] = useState('');
-    const [selectedHora, setSelectedHora] = useState('');
-    const [pecasPerdidasEstimadas, setPecasPerdidasEstimadas] = useState(65);
+    const [selectedHoraApontamentoId, setSelectedHoraApontamentoId] = useState(''); // Armazena o ID do apontamento
+    const [pecasTransferir, setPecasTransferir] = useState('');
     const [causa, setCausa] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [maxPecasTransferiveis, setMaxPecasTransferiveis] = useState(0);
 
     useEffect(() => {
         if (open) {
@@ -45,11 +46,25 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
             setError('');
             setSuccess('');
             setSelectedSetorId('');
-            setSelectedHora('');
-            setPecasPerdidasEstimadas(65);
+            setSelectedHoraApontamentoId('');
+            setPecasTransferir('');
             setCausa('');
+            setMaxPecasTransferiveis(0);
         }
     }, [open]);
+
+    useEffect(() => {
+        if (selectedHoraApontamentoId) {
+            const selectedApontamento = apontamentosHorarios.find(ap => ap.id === selectedHoraApontamentoId);
+            if (selectedApontamento) {
+                setMaxPecasTransferiveis(selectedApontamento.pecas_nc || 0);
+                setPecasTransferir(selectedApontamento.pecas_nc || '');
+            }
+        } else {
+            setMaxPecasTransferiveis(0);
+            setPecasTransferir('');
+        }
+    }, [selectedHoraApontamentoId, apontamentosHorarios]);
 
     const fetchSetores = async () => {
         setLoading(true);
@@ -75,18 +90,33 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         setError('');
         setSuccess('');
 
-        if (!selectedSetorId || !selectedHora || pecasPerdidasEstimadas === '') {
-            setError('Por favor, preencha todos os campos obrigatórios: Setor, Hora e Peças Perdidas Estimadas.');
+        if (!selectedSetorId || !selectedHoraApontamentoId || pecasTransferir === '' || pecasTransferir === null || pecasTransferir === undefined) {
+            setError('Por favor, preencha todos os campos obrigatórios: Setor, Hora do Apontamento e Quantidade de Peças a Transferir.');
+            setLoading(false);
+            return;
+        }
+
+        const numPecasTransferir = Number(pecasTransferir);
+        if (isNaN(numPecasTransferir) || numPecasTransferir <= 0 || numPecasTransferir > maxPecasTransferiveis) {
+            setError(`Quantidade inválida. Deve ser um número positivo e não pode exceder ${maxPecasTransferiveis} peças.`);
+            setLoading(false);
+            return;
+        }
+
+        const selectedApontamento = apontamentosHorarios.find(ap => ap.id === selectedHoraApontamentoId);
+        if (!selectedApontamento) {
+            setError('Apontamento selecionado não encontrado.');
             setLoading(false);
             return;
         }
 
         const payload = {
             setor_id: selectedSetorId,
+            apontamento_injetora_id: selectedHoraApontamentoId,
             data_improdutividade: dataApontamento,
-            hora_improdutividade: selectedHora,
+            hora_improdutividade: selectedApontamento.hora,
             causa: causa,
-            pecas_perdidas_estimadas: pecasPerdidasEstimadas,
+            pecas_transferidas: numPecasTransferir,
         };
 
         try {
@@ -96,10 +126,11 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                     Authorization: `Bearer ${token}`,
                 },
             });
-            setSuccess('Improdutividade registrada com sucesso!');
+            setSuccess('Improdutividade registrada e peças transferidas com sucesso!');
             if (onSuccess) {
                 onSuccess();
             }
+            onClose();
         } catch (err) {
             console.error(err);
             setError('Erro ao registrar improdutividade. ' + (err.response?.data?.message || err.message));
@@ -108,7 +139,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         }
     };
 
-    const horasFinalizadas = apontamentosHorarios.filter(ap => ap.finalizado);
+    const horasComPecasNC = apontamentosHorarios.filter(ap => ap.finalizado && ap.pecas_nc > 0 && ap.tipo_registro === 'producao');
 
     return (
         <Modal
@@ -119,7 +150,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         >
             <Box sx={style} component="form" onSubmit={handleSubmit}>
                 <Typography id="modal-title" variant="h6" component="h2" gutterBottom>
-                    Registrar Improdutividade por Setor
+                    Transferir Peças Não Conformes (Improdutividade)
                 </Typography>
 
                 {loading && <CircularProgress sx={{ mb: 2 }} />}
@@ -129,12 +160,38 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                 <Grid container spacing={2}>
                     <Grid item xs={12}>
                         <FormControl fullWidth margin="normal" required>
-                            <InputLabel id="setor-select-label">Setor</InputLabel>
+                            <InputLabel id="hora-select-label">Hora do Apontamento com NC</InputLabel>
+                            <Select
+                                labelId="hora-select-label"
+                                id="hora-select"
+                                value={selectedHoraApontamentoId}
+                                label="Hora do Apontamento com NC"
+                                onChange={(e) => setSelectedHoraApontamentoId(e.target.value)}
+                                disabled={loading}
+                            >
+                                {horasComPecasNC.length > 0 ? (
+                                    horasComPecasNC.map((apontamento) => (
+                                        <MenuItem key={apontamento.id} value={apontamento.id}>
+                                            {apontamento.hora} (NC: {apontamento.pecas_nc})
+                                        </MenuItem>
+                                    ))
+                                ) : (
+                                    <MenuItem disabled>Nenhum apontamento com peças NC disponível</MenuItem>
+                                )}
+                            </Select>
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                                *Selecione uma hora de apontamento que tenha peças não conformes registradas.
+                            </Typography>
+                        </FormControl>
+                    </Grid>
+                    <Grid item xs={12}>
+                        <FormControl fullWidth margin="normal" required>
+                            <InputLabel id="setor-select-label">Setor Responsável</InputLabel>
                             <Select
                                 labelId="setor-select-label"
                                 id="setor-select"
                                 value={selectedSetorId}
-                                label="Setor"
+                                label="Setor Responsável"
                                 onChange={(e) => setSelectedSetorId(e.target.value)}
                                 disabled={loading}
                             >
@@ -144,31 +201,8 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                                     </MenuItem>
                                 ))}
                             </Select>
-                        </FormControl>
-                    </Grid>
-                    <Grid item xs={12}>
-                        <FormControl fullWidth margin="normal" required>
-                            <InputLabel id="hora-select-label">Hora do Apontamento</InputLabel>
-                            <Select
-                                labelId="hora-select-label"
-                                id="hora-select"
-                                value={selectedHora}
-                                label="Hora do Apontamento"
-                                onChange={(e) => setSelectedHora(e.target.value)}
-                                disabled={loading}
-                            >
-                                {horasFinalizadas.length > 0 ? (
-                                    horasFinalizadas.map((apontamento) => (
-                                        <MenuItem key={apontamento.hora} value={apontamento.hora}>
-                                            {apontamento.hora}
-                                        </MenuItem>
-                                    ))
-                                ) : (
-                                    <MenuItem disabled>Nenhuma hora finalizada disponível</MenuItem>
-                                )}
-                            </Select>
                             <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-                                *Apenas horas já registradas/finalizadas podem ter improdutividade atribuída.
+                                *Para qual setor essa improdutividade deve ser atribuída.
                             </Typography>
                         </FormControl>
                     </Grid>
@@ -176,13 +210,13 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                         <TextField
                             fullWidth
                             margin="normal"
-                            label="Peças Perdidas Estimadas"
+                            label={`Peças a Transferir (Máx: ${maxPecasTransferiveis})`}
                             type="number"
-                            value={pecasPerdidasEstimadas}
-                            onChange={(e) => setPecasPerdidasEstimadas(Number(e.target.value))}
+                            value={pecasTransferir}
+                            onChange={(e) => setPecasTransferir(Number(e.target.value))}
                             required
-                            disabled={loading}
-                            inputProps={{ min: 0 }}
+                            disabled={loading || !selectedHoraApontamentoId}
+                            inputProps={{ min: 1, max: maxPecasTransferiveis }}
                         />
                     </Grid>
                     <Grid item xs={12}>
@@ -212,7 +246,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                         type="submit"
                         disabled={loading}
                     >
-                        Registrar
+                        Transferir
                     </Button>
                 </Box>
             </Box>
