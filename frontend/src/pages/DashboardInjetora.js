@@ -202,31 +202,8 @@ export default function DashboardInjetora() {
         setAggregatedData(sortedTableData);
     }, []);
 
-    const fetchAndProcessApontamentos = useCallback(async (currentMetaValue) => {
-        setError('');
-        setLoadingFilters(true);
-        try {
-            const params = {
-                dataInicio: startDate ? startDate.format('YYYY-MM-DD') : '',
-                dataFim: endDate ? endDate.format('YYYY-MM-DD') : '',
-                peca: selectedPeca ? selectedPeca.codigo_peca : null,
-                tipoInjetora: selectedTipoInjetora === 'todos' ? null : selectedTipoInjetora,
-                turno: selectedTurno === 'todos' ? null : selectedTurno,
-            };
-            const response = await axios.get(`${REACT_APP_API_URL}/api/apontamentos/injetora`, { params });
-            setApontamentos(response.data);
-            processApontamentosForDashboard(response.data, currentMetaValue);
-        } catch (err) {
-            console.error('Erro ao buscar apontamentos filtrados:', err);
-            setError('Erro ao buscar dados para o relatório.');
-        } finally {
-            setLoadingFilters(false);
-        }
-    }, [startDate, endDate, selectedPeca, selectedTipoInjetora, selectedTurno, processApontamentosForDashboard]);
-
-
     useEffect(() => {
-        const fetchDataAndMetaAndApontamentos = async () => {
+        const loadInitialData = async () => {
             try {
                 setLoadingFilters(true);
                 const listsResponse = await axios.get(`${REACT_APP_API_URL}/api/data/lists`);
@@ -239,8 +216,6 @@ export default function DashboardInjetora() {
                 setMetaProducao(initialMeta);
                 setNewMetaValue(initialMeta);
 
-                await fetchAndProcessApontamentos(initialMeta);
-
             } catch (err) {
                 console.error('Erro ao carregar dados iniciais:', err);
                 setError('Erro ao carregar opções de filtro ou meta de produção. Tente novamente.');
@@ -248,14 +223,34 @@ export default function DashboardInjetora() {
                 setLoadingFilters(false);
             }
         };
-        fetchDataAndMetaAndApontamentos();
-    }, [fetchAndProcessApontamentos]);
+        loadInitialData();
+    }, []);
 
     useEffect(() => {
-        if (!loadingFilters && metaProducao !== 0) {
-            fetchAndProcessApontamentos(metaProducao);
-        }
-    }, [startDate, endDate, selectedPeca, selectedTipoInjetora, selectedTurno, metaProducao, fetchAndProcessApontamentos, loadingFilters]);
+        const fetchApontamentos = async () => {
+            if (loadingFilters || metaProducao === 0) {
+                return;
+            }
+
+            setError('');
+            try {
+                const params = {
+                    dataInicio: startDate ? startDate.format('YYYY-MM-DD') : '',
+                    dataFim: endDate ? endDate.format('YYYY-MM-DD') : '',
+                    peca: selectedPeca ? selectedPeca.codigo_peca : null,
+                    tipoInjetora: selectedTipoInjetora === 'todos' ? null : selectedTipoInjetora,
+                    turno: selectedTurno === 'todos' ? null : selectedTurno,
+                };
+                const response = await axios.get(`${REACT_APP_API_URL}/api/apontamentos/injetora`, { params });
+                setApontamentos(response.data);
+                processApontamentosForDashboard(response.data, metaProducao);
+            } catch (err) {
+                console.error('Erro ao buscar apontamentos filtrados:', err);
+                setError('Erro ao buscar dados para o relatório.');
+            }
+        };
+        fetchApontamentos();
+    }, [startDate, endDate, selectedPeca, selectedTipoInjetora, selectedTurno, metaProducao, loadingFilters, processApontamentosForDashboard]);
 
     const handlePecaChange = (event, newValue) => {
         setSelectedPeca(newValue);

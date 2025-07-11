@@ -353,12 +353,12 @@ app.get('/api/produtos/taxa-nc', authenticateToken, async (req, res) => {
             });
         }
         const produtosData = apontamentos.reduce((acc, apontamento) => {
-            const { peca, quantidade_injetada, total_pecas_nc_producao } = apontamento; // Renomeado
+            const { peca, quantidade_injetada, pecas_nc } = apontamento;
             if (!acc[peca]) {
                 acc[peca] = { totalInjetado: 0, totalPecasNC: 0 };
             }
             acc[peca].totalInjetado += quantidade_injetada || 0;
-            acc[peca].totalPecasNC += total_pecas_nc_producao || 0; // Usar total_pecas_nc_producao
+            acc[peca].totalPecasNC += pecas_nc || 0;
             return acc;
         }, {});
 
@@ -520,7 +520,7 @@ app.post('/api/improdutividade', authenticateToken, async (req, res) => {
             .eq('id', apontamento_injetora_id)
             .single();
 
-        if (apontamentoError && apontamentoError.code !== 'PGRST116') { // PGRST116 é "No rows found"
+        if (apontamentoError && apontamentoError.code !== 'PGRST116') {
             console.error('Erro Supabase ao buscar apontamento para atualização:', apontamentoError);
             return res.status(500).json({ message: 'Erro ao buscar apontamento para atualização.' });
         }

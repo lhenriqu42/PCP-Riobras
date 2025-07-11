@@ -32,7 +32,7 @@ const style = {
 export default function RegistrarImprodutividadeModal({ open, onClose, dataApontamento, apontamentosHorarios, onSuccess }) {
     const [setores, setSetores] = useState([]);
     const [selectedSetorId, setSelectedSetorId] = useState('');
-    const [selectedHoraApontamentoId, setSelectedHoraApontamentoId] = useState(''); // Armazena o ID do apontamento
+    const [selectedHoraApontamentoId, setSelectedHoraApontamentoId] = useState(''); 
     const [pecasTransferir, setPecasTransferir] = useState('');
     const [causa, setCausa] = useState('');
     const [loading, setLoading] = useState(false);
