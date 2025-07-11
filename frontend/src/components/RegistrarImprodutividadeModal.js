@@ -168,7 +168,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         >
             <Box sx={style} component="form" onSubmit={handleSubmit}>
                 <Typography id="modal-title" variant="h6" component="h2" gutterBottom>
-                    Registrar Peças Não Conformes por Setor
+                    Registrar Peças NC por Setor
                 </Typography>
 
                 {loading && <CircularProgress sx={{ mb: 2 }} />}
@@ -190,7 +190,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                                 {horasProducaoFinalizadas.length > 0 ? (
                                     horasProducaoFinalizadas.map((apontamento) => (
                                         <MenuItem key={apontamento.id} value={apontamento.id}>
-                                            {apontamento.hora_apontamento} (Boas: {apontamento.quantidade_efetiva != null ? apontamento.quantidade_efetiva : 'N/A'})
+                                            {apontamento.hora_apontamento}
                                         </MenuItem>
                                     ))
                                 ) : (
@@ -223,7 +223,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                         <TextField
                             fullWidth
                             margin="normal"
-                            label={`Peças a Registrar como NC (Boas disponíveis: ${maxPecasRegistraveis})`}
+                            label="Peças a registrar:"
                             type="number"
                             value={pecasRegistrar}
                             onChange={(e) => setPecasRegistrar(e.target.value)}
@@ -236,7 +236,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                         <TextField
                             fullWidth
                             margin="normal"
-                            label="Causa da Não Conformidade (Opcional)"
+                            label="Causa da Não Conformidade"
                             value={causa}
                             onChange={(e) => setCausa(e.target.value)}
                             multiline

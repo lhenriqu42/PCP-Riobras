@@ -24,7 +24,7 @@ import {
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { BarChart } from '@mui/x-charts/BarChart';
+import { BarChart, PieChart } from '@mui/x-charts'; // Import PieChart
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import moment from 'moment';
 import axios from 'axios';
@@ -39,6 +39,7 @@ export default function AnaliseImprodutividade() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [expanded, setExpanded] = useState(false);
+    const [displayLimit, setDisplayLimit] = useState(5); // Novo estado para o limite de exibição
 
     const [filters, setFilters] = useState({
         startDate: null,
@@ -56,12 +57,21 @@ export default function AnaliseImprodutividade() {
             const groupedData = improdutividadeData.reduce((acc, item) => {
                 const setorNome = item.setores?.nome_setor || 'Setor Desconhecido';
                 if (!acc[setorNome]) {
-                    acc[setorNome] = { totalPecas: 0, records: [] };
+                    acc[setorNome] = { totalPecas: 0, records: [], causes: {} }; 
                 }
                 acc[setorNome].totalPecas += item.pecas_transferidas;
                 acc[setorNome].records.push(item);
+
+                const causa = item.causa || 'Causa Não Especificada';
+                acc[setorNome].causes[causa] = (acc[setorNome].causes[causa] || 0) + item.pecas_transferidas;
+
                 return acc;
             }, {});
+
+            Object.keys(groupedData).forEach(setorNome => {
+                groupedData[setorNome].records.sort((a, b) => b.pecas_transferidas - a.pecas_transferidas);
+            });
+
 
             const totalNC = improdutividadeData.reduce((sum, item) => sum + item.pecas_transferidas, 0);
             setProcessedData(groupedData);
@@ -212,6 +222,12 @@ export default function AnaliseImprodutividade() {
                             Object.entries(processedData).sort((a, b) => b[1].totalPecas - a[1].totalPecas).map(([setorNome, details]) => {
                                 const percentageOfTotalNC = totalGeralPecasNC > 0 ? (details.totalPecas / totalGeralPecasNC) * 100 : 0;
                                 
+                                const pieChartData = Object.entries(details.causes).map(([causa, value], index) => ({
+                                    id: index,
+                                    value: value,
+                                    label: causa,
+                                }));
+
                                 return (
                                     <Accordion
                                         key={setorNome}
@@ -243,6 +259,30 @@ export default function AnaliseImprodutividade() {
                                                     </Box>
                                                 </Grid>
                                                 <Grid item xs={12} md={8}>
+                                                    {pieChartData.length > 0 && (
+                                                        <>
+                                                            <Typography variant="subtitle1" align="center" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
+                                                                Distribuição de Peças NC por Causa
+                                                            </Typography>
+                                                            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                                                                <PieChart
+                                                                    series={[
+                                                                        {
+                                                                            data: pieChartData,
+                                                                            highlightScope: { faded: 'global', highlighted: 'item' },
+                                                                            faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
+                                                                        },
+                                                                    ]}
+                                                                    height={200}
+                                                                />
+                                                            </Box>
+                                                        </>
+                                                    )}
+                                                </Grid>
+                                                <Grid item xs={12}>
+                                                    <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
+                                                        Maiores Registros de Não Conformidade (Top {displayLimit})
+                                                    </Typography>
                                                     <TableContainer component={Paper} variant="outlined">
                                                         <Table size="small">
                                                             <TableHead>
@@ -255,7 +295,7 @@ export default function AnaliseImprodutividade() {
                                                                 </TableRow>
                                                             </TableHead>
                                                             <TableBody>
-                                                                {details.records.map((rec) => (
+                                                                {details.records.slice(0, displayLimit).map((rec) => ( 
                                                                     <TableRow key={rec.id}>
                                                                         <TableCell>{moment(rec.data_improdutividade).format('DD/MM/YYYY')}</TableCell>
                                                                         <TableCell>{rec.hora_improdutividade}</TableCell>
@@ -264,6 +304,15 @@ export default function AnaliseImprodutividade() {
                                                                         <TableCell>{rec.usuario_registro}</TableCell>
                                                                     </TableRow>
                                                                 ))}
+                                                                {details.records.length > displayLimit && (
+                                                                    <TableRow>
+                                                                        <TableCell colSpan={5} align="center">
+                                                                            <Typography variant="body2" color="text.secondary">
+                                                                                Use os filtros acima para refinar a busca e ver mais registros.
+                                                                            </Typography>
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                )}
                                                             </TableBody>
                                                         </Table>
                                                     </TableContainer>
