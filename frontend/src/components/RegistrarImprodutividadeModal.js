@@ -14,7 +14,8 @@ import {
     Grid
 } from '@mui/material';
 import axios from 'axios';
-import REACT_APP_API_URL from '../api';
+
+const REACT_APP_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const style = {
     position: 'absolute',
@@ -32,13 +33,13 @@ const style = {
 export default function RegistrarImprodutividadeModal({ open, onClose, dataApontamento, apontamentosHorarios, onSuccess }) {
     const [setores, setSetores] = useState([]);
     const [selectedSetorId, setSelectedSetorId] = useState('');
-    const [selectedHoraApontamentoId, setSelectedHoraApontamentoId] = useState(''); 
-    const [pecasTransferir, setPecasTransferir] = useState('');
+    const [selectedHoraApontamentoId, setSelectedHoraApontamentoId] = useState('');
+    const [pecasRegistrar, setPecasRegistrar] = useState('');
     const [causa, setCausa] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [maxPecasTransferiveis, setMaxPecasTransferiveis] = useState(0);
+    const [maxPecasRegistraveis, setMaxPecasRegistraveis] = useState(0);
 
     useEffect(() => {
         if (open) {
@@ -47,9 +48,9 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
             setSuccess('');
             setSelectedSetorId('');
             setSelectedHoraApontamentoId('');
-            setPecasTransferir('');
+            setPecasRegistrar('');
             setCausa('');
-            setMaxPecasTransferiveis(0);
+            setMaxPecasRegistraveis(0);
         }
     }, [open]);
 
@@ -57,13 +58,12 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         if (selectedHoraApontamentoId) {
             const selectedApontamento = apontamentosHorarios.find(ap => ap.id === selectedHoraApontamentoId);
             if (selectedApontamento) {
-                setMaxPecasTransferiveis(selectedApontamento.pecas_nc || 0);
-                setPecasTransferir(selectedApontamento.pecas_nc || '');
+                setMaxPecasRegistraveis(selectedApontamento.quantidade_efetiva || 0);
             }
         } else {
-            setMaxPecasTransferiveis(0);
-            setPecasTransferir('');
+            setMaxPecasRegistraveis(0);
         }
+        setPecasRegistrar('');
     }, [selectedHoraApontamentoId, apontamentosHorarios]);
 
     const fetchSetores = async () => {
@@ -78,7 +78,6 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
             setSetores(response.data);
             setLoading(false);
         } catch (err) {
-            console.error(err);
             setError('Erro ao carregar setores. Tente novamente.');
             setLoading(false);
         }
@@ -90,15 +89,21 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         setError('');
         setSuccess('');
 
-        if (!selectedSetorId || !selectedHoraApontamentoId || pecasTransferir === '' || pecasTransferir === null || pecasTransferir === undefined) {
-            setError('Por favor, preencha todos os campos obrigatórios: Setor, Hora do Apontamento e Quantidade de Peças a Transferir.');
+        if (!selectedSetorId || !selectedHoraApontamentoId || pecasRegistrar === '' || pecasRegistrar === null) {
+            setError('Por favor, preencha todos os campos obrigatórios: Hora, Setor e Quantidade.');
             setLoading(false);
             return;
         }
 
-        const numPecasTransferir = Number(pecasTransferir);
-        if (isNaN(numPecasTransferir) || numPecasTransferir <= 0 || numPecasTransferir > maxPecasTransferiveis) {
-            setError(`Quantidade inválida. Deve ser um número positivo e não pode exceder ${maxPecasTransferiveis} peças.`);
+        const numPecasRegistrar = Number(pecasRegistrar);
+        if (isNaN(numPecasRegistrar) || numPecasRegistrar <= 0) {
+            setError(`Quantidade inválida. Deve ser um número positivo.`);
+            setLoading(false);
+            return;
+        }
+        
+        if (numPecasRegistrar > maxPecasRegistraveis) {
+            setError(`Quantidade não pode exceder o total de peças boas (${maxPecasRegistraveis}).`);
             setLoading(false);
             return;
         }
@@ -114,9 +119,9 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
             setor_id: selectedSetorId,
             apontamento_injetora_id: selectedHoraApontamentoId,
             data_improdutividade: dataApontamento,
-            hora_improdutividade: selectedApontamento.hora,
+            hora_improdutividade: selectedApontamento.hora_apontamento,
             causa: causa,
-            pecas_transferidas: numPecasTransferir,
+            pecas_transferidas: numPecasRegistrar,
         };
 
         try {
@@ -126,20 +131,21 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                     Authorization: `Bearer ${token}`,
                 },
             });
-            setSuccess('Improdutividade registrada e peças transferidas com sucesso!');
+            setSuccess('Peças não conformes registradas com sucesso!');
             if (onSuccess) {
                 onSuccess();
             }
-            onClose();
+            setTimeout(() => {
+                onClose();
+            }, 1500);
         } catch (err) {
-            console.error(err);
-            setError('Erro ao registrar improdutividade. ' + (err.response?.data?.message || err.message));
+            setError('Erro ao registrar não conformidade. ' + (err.response?.data?.message || err.message));
         } finally {
             setLoading(false);
         }
     };
 
-    const horasComPecasNC = apontamentosHorarios.filter(ap => ap.finalizado && ap.pecas_nc > 0 && ap.tipo_registro === 'producao');
+    const horasProducaoFinalizadas = apontamentosHorarios.filter(ap => ap.tipo_registro === 'producao');
 
     return (
         <Modal
@@ -150,7 +156,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         >
             <Box sx={style} component="form" onSubmit={handleSubmit}>
                 <Typography id="modal-title" variant="h6" component="h2" gutterBottom>
-                    Transferir Peças Não Conformes (Improdutividade)
+                    Registrar Peças Não Conformes por Setor
                 </Typography>
 
                 {loading && <CircularProgress sx={{ mb: 2 }} />}
@@ -160,28 +166,25 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                 <Grid container spacing={2}>
                     <Grid item xs={12}>
                         <FormControl fullWidth margin="normal" required>
-                            <InputLabel id="hora-select-label">Hora do Apontamento com NC</InputLabel>
+                            <InputLabel id="hora-select-label">Hora do Apontamento de Produção</InputLabel>
                             <Select
                                 labelId="hora-select-label"
                                 id="hora-select"
                                 value={selectedHoraApontamentoId}
-                                label="Hora do Apontamento com NC"
+                                label="Hora do Apontamento de Produção"
                                 onChange={(e) => setSelectedHoraApontamentoId(e.target.value)}
                                 disabled={loading}
                             >
-                                {horasComPecasNC.length > 0 ? (
-                                    horasComPecasNC.map((apontamento) => (
+                                {horasProducaoFinalizadas.length > 0 ? (
+                                    horasProducaoFinalizadas.map((apontamento) => (
                                         <MenuItem key={apontamento.id} value={apontamento.id}>
-                                            {apontamento.hora} (NC: {apontamento.pecas_nc})
+                                            {apontamento.hora_apontamento} (Boas: {apontamento.quantidade_efetiva || 0})
                                         </MenuItem>
                                     ))
                                 ) : (
-                                    <MenuItem disabled>Nenhum apontamento com peças NC disponível</MenuItem>
+                                    <MenuItem disabled>Nenhum apontamento de produção disponível</MenuItem>
                                 )}
                             </Select>
-                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-                                *Selecione uma hora de apontamento que tenha peças não conformes registradas.
-                            </Typography>
                         </FormControl>
                     </Grid>
                     <Grid item xs={12}>
@@ -201,29 +204,26 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                                     </MenuItem>
                                 ))}
                             </Select>
-                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-                                *Para qual setor essa improdutividade deve ser atribuída.
-                            </Typography>
                         </FormControl>
                     </Grid>
                     <Grid item xs={12}>
                         <TextField
                             fullWidth
                             margin="normal"
-                            label={`Peças a Transferir (Máx: ${maxPecasTransferiveis})`}
+                            label={`Peças a Registrar como NC (Máx: ${maxPecasRegistraveis})`}
                             type="number"
-                            value={pecasTransferir}
-                            onChange={(e) => setPecasTransferir(Number(e.target.value))}
+                            value={pecasRegistrar}
+                            onChange={(e) => setPecasRegistrar(e.target.value)}
                             required
                             disabled={loading || !selectedHoraApontamentoId}
-                            inputProps={{ min: 1, max: maxPecasTransferiveis }}
+                            inputProps={{ min: 1, max: maxPecasRegistraveis > 0 ? maxPecasRegistraveis : undefined }}
                         />
                     </Grid>
                     <Grid item xs={12}>
                         <TextField
                             fullWidth
                             margin="normal"
-                            label="Causa da Improdutividade (Opcional)"
+                            label="Causa da Não Conformidade (Opcional)"
                             value={causa}
                             onChange={(e) => setCausa(e.target.value)}
                             multiline
@@ -244,9 +244,9 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                     <Button
                         variant="contained"
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || !selectedHoraApontamentoId}
                     >
-                        Transferir
+                        Registrar NC
                     </Button>
                 </Box>
             </Box>
