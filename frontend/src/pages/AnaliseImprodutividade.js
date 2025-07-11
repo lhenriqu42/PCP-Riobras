@@ -24,7 +24,7 @@ import {
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { BarChart, PieChart } from '@mui/x-charts'; // Import PieChart
+import { BarChart, PieChart } from '@mui/x-charts';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import moment from 'moment';
 import axios from 'axios';
@@ -39,7 +39,7 @@ export default function AnaliseImprodutividade() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [expanded, setExpanded] = useState(false);
-    const [displayLimit, setDisplayLimit] = useState(5); // Novo estado para o limite de exibição
+    const [displayLimit, setDisplayLimit] = useState(5);
 
     const [filters, setFilters] = useState({
         startDate: null,
@@ -57,21 +57,16 @@ export default function AnaliseImprodutividade() {
             const groupedData = improdutividadeData.reduce((acc, item) => {
                 const setorNome = item.setores?.nome_setor || 'Setor Desconhecido';
                 if (!acc[setorNome]) {
-                    acc[setorNome] = { totalPecas: 0, records: [], causes: {} }; 
+                    acc[setorNome] = { totalPecas: 0, records: [] };
                 }
                 acc[setorNome].totalPecas += item.pecas_transferidas;
                 acc[setorNome].records.push(item);
-
-                const causa = item.causa || 'Causa Não Especificada';
-                acc[setorNome].causes[causa] = (acc[setorNome].causes[causa] || 0) + item.pecas_transferidas;
-
                 return acc;
             }, {});
 
             Object.keys(groupedData).forEach(setorNome => {
                 groupedData[setorNome].records.sort((a, b) => b.pecas_transferidas - a.pecas_transferidas);
             });
-
 
             const totalNC = improdutividadeData.reduce((sum, item) => sum + item.pecas_transferidas, 0);
             setProcessedData(groupedData);
@@ -139,6 +134,12 @@ export default function AnaliseImprodutividade() {
     const handleAccordionChange = (panel) => (event, isExpanded) => {
         setExpanded(isExpanded ? panel : false);
     };
+
+    const globalPieChartData = Object.entries(processedData).map(([setorName, details], index) => ({
+        id: index,
+        value: details.totalPecas,
+        label: setorName,
+    }));
 
     return (
         <LocalizationProvider dateAdapter={AdapterMoment} adapterLocale="pt-br">
@@ -222,12 +223,6 @@ export default function AnaliseImprodutividade() {
                             Object.entries(processedData).sort((a, b) => b[1].totalPecas - a[1].totalPecas).map(([setorNome, details]) => {
                                 const percentageOfTotalNC = totalGeralPecasNC > 0 ? (details.totalPecas / totalGeralPecasNC) * 100 : 0;
                                 
-                                const pieChartData = Object.entries(details.causes).map(([causa, value], index) => ({
-                                    id: index,
-                                    value: value,
-                                    label: causa,
-                                }));
-
                                 return (
                                     <Accordion
                                         key={setorNome}
@@ -243,44 +238,45 @@ export default function AnaliseImprodutividade() {
                                             </Typography>
                                         </AccordionSummary>
                                         <AccordionDetails sx={{ p: 3 }}>
-                                            <Grid container spacing={3} alignItems="center">
-                                                <Grid item xs={12} md={4}>
-                                                    <Typography variant="subtitle1" align="center" gutterBottom sx={{ fontWeight: 'bold' }}>Peças NC por Setor</Typography>
-                                                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                                                        {details.totalPecas > 0 ? (
-                                                            <BarChart
-                                                                series={[{ data: [details.totalPecas], label: setorNome, color: '#0288d1' }]}
-                                                                height={220}
-                                                                xAxis={[{ scaleType: 'band', data: [setorNome] }]}
+                                            <Grid container spacing={3} alignItems="flex-start">
+                                                {globalPieChartData.length > 0 && totalGeralPecasNC > 0 && (
+                                                    <Grid item xs={12} md={6}>
+                                                        <Typography variant="subtitle1" align="center" gutterBottom sx={{ fontWeight: 'bold' }}>
+                                                            Distribuição de Peças NC entre Setores
+                                                        </Typography>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                                                            <PieChart
+                                                                series={[
+                                                                    {
+                                                                        data: globalPieChartData.map(item => ({
+                                                                            ...item,
+                                                                            highlighted: item.label === setorNome,
+                                                                        })),
+                                                                        innerRadius: 30,
+                                                                        outerRadius: 100,
+                                                                        paddingAngle: 5,
+                                                                        cornerRadius: 5,
+                                                                        startAngle: -45,
+                                                                        endAngle: 225,
+                                                                        cx: 150,
+                                                                        cy: 150,
+                                                                        arcLabel: (item) => `${item.label} (${(item.value / totalGeralPecasNC * 100).toFixed(1)}%)`,
+                                                                        highlightScope: { faded: 'global', highlighted: 'item' },
+                                                                        faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
+                                                                    },
+                                                                ]}
+                                                                height={300} // altura 
+                                                                width={500} // largura
+                                                                slotProps={{
+                                                                    legend: { hidden: false, direction: 'column', position: { vertical: 'middle', horizontal: 'right' } },
+                                                                }}
                                                             />
-                                                        ) : (
-                                                            <Alert severity="info">Nenhuma NC para este setor no período.</Alert>
-                                                        )}
-                                                    </Box>
-                                                </Grid>
-                                                <Grid item xs={12} md={8}>
-                                                    {pieChartData.length > 0 && (
-                                                        <>
-                                                            <Typography variant="subtitle1" align="center" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
-                                                                Distribuição de Peças NC por Causa
-                                                            </Typography>
-                                                            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                                                                <PieChart
-                                                                    series={[
-                                                                        {
-                                                                            data: pieChartData,
-                                                                            highlightScope: { faded: 'global', highlighted: 'item' },
-                                                                            faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
-                                                                        },
-                                                                    ]}
-                                                                    height={200}
-                                                                />
-                                                            </Box>
-                                                        </>
-                                                    )}
-                                                </Grid>
-                                                <Grid item xs={12}>
-                                                    <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
+                                                        </Box>
+                                                    </Grid>
+                                                )}
+                                                
+                                                <Grid item xs={12} md={globalPieChartData.length > 0 && totalGeralPecasNC > 0 ? 6 : 12}>
+                                                    <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
                                                         Maiores Registros de Não Conformidade (Top {displayLimit})
                                                     </Typography>
                                                     <TableContainer component={Paper} variant="outlined">
@@ -295,7 +291,7 @@ export default function AnaliseImprodutividade() {
                                                                 </TableRow>
                                                             </TableHead>
                                                             <TableBody>
-                                                                {details.records.slice(0, displayLimit).map((rec) => ( 
+                                                                {details.records.slice(0, displayLimit).map((rec) => (
                                                                     <TableRow key={rec.id}>
                                                                         <TableCell>{moment(rec.data_improdutividade).format('DD/MM/YYYY')}</TableCell>
                                                                         <TableCell>{rec.hora_improdutividade}</TableCell>
