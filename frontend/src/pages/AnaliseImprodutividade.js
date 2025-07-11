@@ -16,7 +16,6 @@ import {
     InputLabel,
     Select,
     MenuItem,
-    TextField,
     Button,
     Accordion,
     AccordionSummary,
@@ -25,7 +24,7 @@ import {
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { PieChart } from '@mui/x-charts/PieChart';
+import { BarChart } from '@mui/x-charts/BarChart';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import moment from 'moment';
 import axios from 'axios';
@@ -35,7 +34,8 @@ const REACT_APP_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:500
 export default function AnaliseImprodutividade() {
     const [improdutividadeData, setImprodutividadeData] = useState([]);
     const [processedData, setProcessedData] = useState({});
-    const [totalGeralPecas, setTotalGeralPecas] = useState(0);
+    const [totalGeralPecasNC, setTotalGeralPecasNC] = useState(0);
+    const [totalPecasBoasProduzidas, setTotalPecasBoasProduzidas] = useState(0);
     const [setores, setSetores] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -50,6 +50,7 @@ export default function AnaliseImprodutividade() {
     useEffect(() => {
         fetchSetores();
         fetchImprodutividadeData();
+        fetchTotalProducaoData();
     }, []);
 
     useEffect(() => {
@@ -64,14 +65,18 @@ export default function AnaliseImprodutividade() {
                 return acc;
             }, {});
 
-            const totalPecas = improdutividadeData.reduce((sum, item) => sum + item.pecas_transferidas, 0);
+            const totalNC = improdutividadeData.reduce((sum, item) => sum + item.pecas_transferidas, 0);
             setProcessedData(groupedData);
-            setTotalGeralPecas(totalPecas);
+            setTotalGeralPecasNC(totalNC);
         } else {
             setProcessedData({});
-            setTotalGeralPecas(0);
+            setTotalGeralPecasNC(0);
         }
     }, [improdutividadeData]);
+
+    useEffect(() => {
+        fetchTotalProducaoData();
+    }, [filters.startDate, filters.endDate]);
 
     const fetchSetores = async () => {
         try {
@@ -108,16 +113,43 @@ export default function AnaliseImprodutividade() {
         }
     };
 
+    const fetchTotalProducaoData = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const params = {
+                dataInicio: filters.startDate ? moment(filters.startDate).format('YYYY-MM-DD') : undefined,
+                dataFim: filters.endDate ? moment(filters.endDate).format('YYYY-MM-DD') : undefined,
+            };
+            const response = await axios.get(`${REACT_APP_API_URL}/api/producao/total-boas`, {
+                params,
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setTotalPecasBoasProduzidas(response.data.totalBoas || 0);
+        } catch (err) {
+            console.error('Erro ao buscar total de peças boas produzidas:', err);
+            setTotalPecasBoasProduzidas(0);
+        }
+    };
+
     const handleFilterChange = (name, value) => {
         setFilters(prev => ({ ...prev, [name]: value }));
     };
     
+    const handleApplyFilters = () => {
+        fetchImprodutividadeData();
+        fetchTotalProducaoData();
+    };
+
     const handleClearFilters = () => {
         setFilters({
             startDate: null,
             endDate: null,
             selectedSetorId: ''
         });
+        setTimeout(() => {
+            fetchImprodutividadeData();
+            fetchTotalProducaoData();
+        }, 0);
     };
 
     const handleAccordionChange = (panel) => (event, isExpanded) => {
@@ -167,7 +199,7 @@ export default function AnaliseImprodutividade() {
                             </FormControl>
                         </Grid>
                         <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', gap: 1 }}>
-                            <Button variant="contained" onClick={fetchImprodutividadeData} disabled={loading} fullWidth>Aplicar</Button>
+                            <Button variant="contained" onClick={handleApplyFilters} disabled={loading} fullWidth>Aplicar</Button>
                             <Button variant="outlined" onClick={handleClearFilters} disabled={loading} fullWidth>Limpar</Button>
                         </Grid>
                     </Grid>
@@ -177,81 +209,100 @@ export default function AnaliseImprodutividade() {
                 {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
                 {!loading && !error && (
-                    Object.keys(processedData).length > 0 ? (
-                        Object.entries(processedData).sort((a, b) => b[1].totalPecas - a[1].totalPecas).map(([setorNome, details]) => {
-                            const percentage = totalGeralPecas > 0 ? (details.totalPecas / totalGeralPecas) * 100 : 0;
-                            const chartData = [
-                                { id: 0, value: details.totalPecas, label: setorNome, color: '#0288d1' },
-                                { id: 1, value: totalGeralPecas - details.totalPecas, label: 'Outros Setores', color: '#e0e0e0' },
-                            ];
-                            return (
-                                <Accordion
-                                    key={setorNome}
-                                    expanded={expanded === setorNome}
-                                    onChange={handleAccordionChange(setorNome)}
-                                    sx={{ mb: 2, borderRadius: '12px', '&:before': { display: 'none' } }}
-                                    elevation={3}
-                                >
-                                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
-                                        <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 500 }}>{setorNome}</Typography>
-                                        <Typography sx={{ color: 'text.secondary', alignSelf: 'center', fontWeight: 'bold' }}>
-                                            {details.totalPecas} peças ({percentage.toFixed(1)}%)
-                                        </Typography>
-                                    </AccordionSummary>
-                                    <AccordionDetails sx={{ p: 3 }}>
-                                        <Grid container spacing={3} alignItems="center">
-                                            <Grid item xs={12} md={4}>
-                                                <Typography variant="subtitle1" align="center" gutterBottom sx={{ fontWeight: 'bold' }}>Proporção de Peças NC</Typography>
-                                                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                                                    <PieChart
-                                                        series={[{
-                                                            data: chartData,
-                                                            highlightScope: { faded: 'global', highlighted: 'item' },
-                                                            faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
-                                                            innerRadius: 40,
-                                                            outerRadius: 100,
-                                                            paddingAngle: 2,
-                                                            cornerRadius: 5,
-                                                        }]}
-                                                        height={220}
-                                                        slotProps={{ legend: { hidden: true } }}
-                                                    />
-                                                </Box>
-                                            </Grid>
-                                            <Grid item xs={12} md={8}>
-                                                <TableContainer component={Paper} variant="outlined">
-                                                    <Table size="small">
-                                                        <TableHead>
-                                                            <TableRow>
-                                                                <TableCell>Data</TableCell>
-                                                                <TableCell>Hora</TableCell>
-                                                                <TableCell align="right">Peças</TableCell>
-                                                                <TableCell>Causa</TableCell>
-                                                                <TableCell>Usuário</TableCell>
-                                                            </TableRow>
-                                                        </TableHead>
-                                                        <TableBody>
-                                                            {details.records.map((rec) => (
-                                                                <TableRow key={rec.id}>
-                                                                    <TableCell>{moment(rec.data_improdutividade).format('DD/MM/YYYY')}</TableCell>
-                                                                    <TableCell>{rec.hora_improdutividade}</TableCell>
-                                                                    <TableCell align="right">{rec.pecas_transferidas}</TableCell>
-                                                                    <TableCell>{rec.causa || 'N/A'}</TableCell>
-                                                                    <TableCell>{rec.usuario_registro}</TableCell>
+                    <>
+                        <Paper elevation={3} sx={{ p: 3, mb: 4, borderRadius: '12px' }}>
+                            <Typography variant="h6" gutterBottom align="center">Visão Geral: Produção vs. Peças Não Conformes</Typography>
+                            {(totalPecasBoasProduzidas > 0 || totalGeralPecasNC > 0) ? (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                                    <BarChart
+                                        series={[
+                                            { data: [totalPecasBoasProduzidas], label: 'Produção (Peças Boas)', color: '#4CAF50' },
+                                            { data: [totalGeralPecasNC], label: 'Total Não Conformes', color: '#F44336' },
+                                        ]}
+                                        height={250}
+                                        xAxis={[{ scaleType: 'band', data: ['Resumo'] }]}
+                                    />
+                                </Box>
+                            ) : (
+                                <Alert severity="info">Dados insuficientes para a visão geral.</Alert>
+                            )}
+                            <Typography variant="body1" align="center" sx={{ mt: 2, fontWeight: 'bold' }}>
+                                Total de Peças Boas Produzidas: {totalPecasBoasProduzidas}
+                            </Typography>
+                            <Typography variant="body1" align="center" sx={{ fontWeight: 'bold' }}>
+                                Total de Peças Não Conformes: {totalGeralPecasNC}
+                            </Typography>
+                        </Paper>
+
+                        {Object.keys(processedData).length > 0 ? (
+                            Object.entries(processedData).sort((a, b) => b[1].totalPecas - a[1].totalPecas).map(([setorNome, details]) => {
+                                const percentageOfTotalNC = totalGeralPecasNC > 0 ? (details.totalPecas / totalGeralPecasNC) * 100 : 0;
+                                
+                                return (
+                                    <Accordion
+                                        key={setorNome}
+                                        expanded={expanded === setorNome}
+                                        onChange={handleAccordionChange(setorNome)}
+                                        sx={{ mb: 2, borderRadius: '12px', '&:before': { display: 'none' } }}
+                                        elevation={3}
+                                    >
+                                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
+                                            <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 500 }}>{setorNome}</Typography>
+                                            <Typography sx={{ color: 'text.secondary', alignSelf: 'center', fontWeight: 'bold' }}>
+                                                {details.totalPecas} peças NC ({percentageOfTotalNC.toFixed(1)}% do total de NCs)
+                                            </Typography>
+                                        </AccordionSummary>
+                                        <AccordionDetails sx={{ p: 3 }}>
+                                            <Grid container spacing={3} alignItems="center">
+                                                <Grid item xs={12} md={4}>
+                                                    <Typography variant="subtitle1" align="center" gutterBottom sx={{ fontWeight: 'bold' }}>Peças NC por Setor</Typography>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                                                        {details.totalPecas > 0 ? (
+                                                            <BarChart
+                                                                series={[{ data: [details.totalPecas], label: setorNome, color: '#0288d1' }]}
+                                                                height={220}
+                                                                xAxis={[{ scaleType: 'band', data: [setorNome] }]}
+                                                            />
+                                                        ) : (
+                                                            <Alert severity="info">Nenhuma NC para este setor no período.</Alert>
+                                                        )}
+                                                    </Box>
+                                                </Grid>
+                                                <Grid item xs={12} md={8}>
+                                                    <TableContainer component={Paper} variant="outlined">
+                                                        <Table size="small">
+                                                            <TableHead>
+                                                                <TableRow>
+                                                                    <TableCell>Data</TableCell>
+                                                                    <TableCell>Hora</TableCell>
+                                                                    <TableCell align="right">Peças NC</TableCell>
+                                                                    <TableCell>Causa</TableCell>
+                                                                    <TableCell>Usuário</TableCell>
                                                                 </TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
-                                                </TableContainer>
+                                                            </TableHead>
+                                                            <TableBody>
+                                                                {details.records.map((rec) => (
+                                                                    <TableRow key={rec.id}>
+                                                                        <TableCell>{moment(rec.data_improdutividade).format('DD/MM/YYYY')}</TableCell>
+                                                                        <TableCell>{rec.hora_improdutividade}</TableCell>
+                                                                        <TableCell align="right">{rec.pecas_transferidas}</TableCell>
+                                                                        <TableCell>{rec.causa || 'N/A'}</TableCell>
+                                                                        <TableCell>{rec.usuario_registro}</TableCell>
+                                                                    </TableRow>
+                                                                ))}
+                                                            </TableBody>
+                                                        </Table>
+                                                    </TableContainer>
+                                                </Grid>
                                             </Grid>
-                                        </Grid>
-                                    </AccordionDetails>
-                                </Accordion>
-                            );
-                        })
-                    ) : (
-                        <Alert severity="info">Nenhum registro de improdutividade encontrado para os filtros selecionados.</Alert>
-                    )
+                                        </AccordionDetails>
+                                    </Accordion>
+                                );
+                            })
+                        ) : (
+                            <Alert severity="info">Nenhum registro de improdutividade encontrado para os filtros selecionados.</Alert>
+                        )}
+                    </>
                 )}
             </Box>
         </LocalizationProvider>

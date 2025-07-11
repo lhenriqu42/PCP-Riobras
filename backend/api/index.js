@@ -331,15 +331,28 @@ app.get('/api/setores', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/improdutividade', authenticateToken, async (req, res) => {
-    const { setor_id, apontamento_injetora_id, data_improdutividade, hora_improdutividade, causa, pecas_transferidas } = req.body;
+    let { setor_id, apontamento_injetora_id, data_improdutividade, hora_improdutividade, causa, pecas_transferidas } = req.body;
     const usuario_registro = req.user ? req.user.username : 'Desconhecido';
     const numPecasRegistrar = Number(pecas_transferidas);
 
-    if (!setor_id || !apontamento_injetora_id || !data_improdutividade || !hora_improdutividade || !numPecasRegistrar || numPecasRegistrar <= 0) {
+    if (!apontamento_injetora_id || !data_improdutividade || !hora_improdutividade || !numPecasRegistrar || numPecasRegistrar <= 0) {
         return res.status(400).json({ message: 'Campos obrigatórios faltando ou inválidos.' });
     }
 
     try {
+        if (!setor_id) {
+            const { data: producaoSetor, error: setorError } = await supabaseAdmin
+                .from('setores')
+                .select('id')
+                .ilike('nome_setor', 'produção')
+                .single();
+
+            if (setorError || !producaoSetor) {
+                return res.status(404).json({ message: 'Setor "Produção" não encontrado no banco de dados. Por favor, selecione um setor válido.' });
+            }
+            setor_id = producaoSetor.id;
+        }
+
         const { data: apontamento, error: fetchError } = await supabaseAdmin
             .from('apontamentos_injetora')
             .select('pecas_nc, quantidade_efetiva')
@@ -350,12 +363,8 @@ app.post('/api/improdutividade', authenticateToken, async (req, res) => {
             return res.status(404).json({ message: 'Apontamento de origem não encontrado.' });
         }
 
-        if (numPecasRegistrar > apontamento.quantidade_efetiva) {
-            return res.status(400).json({ message: `A quantidade a registrar (${numPecasRegistrar}) excede a quantidade de peças boas disponíveis (${apontamento.quantidade_efetiva}).` });
-        }
-
         const newPecasNC = (apontamento.pecas_nc || 0) + numPecasRegistrar;
-        const newQuantidadeEfetiva = apontamento.quantidade_efetiva - numPecasRegistrar;
+        const newQuantidadeEfetiva = (apontamento.quantidade_efetiva || 0) - numPecasRegistrar;
 
         const { error: updateError } = await supabaseAdmin
             .from('apontamentos_injetora')
@@ -414,6 +423,29 @@ app.get('/api/improdutividade/analise', authenticateToken, async (req, res) => {
         res.status(200).json(data);
     } catch (error) {
         res.status(500).json({ message: 'Erro ao buscar dados de improdutividade.', details: error.message });
+    }
+});
+
+app.get('/api/producao/total-boas', authenticateToken, async (req, res) => {
+    const { dataInicio, dataFim } = req.query;
+
+    try {
+        let query = supabase
+            .from('apontamentos_injetora')
+            .select('quantidade_efetiva');
+
+        if (dataInicio && dataFim) {
+            query = query.gte('data_apontamento', dataInicio).lte('data_apontamento', dataFim);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        const totalBoas = data.reduce((sum, item) => sum + (item.quantidade_efetiva || 0), 0);
+        res.status(200).json({ totalBoas });
+    } catch (error) {
+        res.status(500).json({ message: 'Erro ao buscar o total de peças boas produzidas.', details: error.message });
     }
 });
 

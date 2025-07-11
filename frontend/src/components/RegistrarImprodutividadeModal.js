@@ -33,6 +33,7 @@ const style = {
 export default function RegistrarImprodutividadeModal({ open, onClose, dataApontamento, apontamentosHorarios, onSuccess }) {
     const [setores, setSetores] = useState([]);
     const [selectedSetorId, setSelectedSetorId] = useState('');
+    const [producaoSetorId, setProducaoSetorId] = useState('');
     const [selectedHoraApontamentoId, setSelectedHoraApontamentoId] = useState('');
     const [pecasRegistrar, setPecasRegistrar] = useState('');
     const [causa, setCausa] = useState('');
@@ -75,7 +76,13 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                     Authorization: `Bearer ${token}`,
                 },
             });
-            setSetores(response.data);
+            const fetchedSetores = response.data;
+            setSetores(fetchedSetores);
+
+            const producao = fetchedSetores.find(setor => setor.nome_setor.toLowerCase() === 'produção');
+            if (producao) {
+                setProducaoSetorId(producao.id);
+            }
             setLoading(false);
         } catch (err) {
             setError('Erro ao carregar setores. Tente novamente.');
@@ -89,8 +96,19 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         setError('');
         setSuccess('');
 
-        if (!selectedSetorId || !selectedHoraApontamentoId || pecasRegistrar === '' || pecasRegistrar === null) {
-            setError('Por favor, preencha todos os campos obrigatórios: Hora, Setor e Quantidade.');
+        let finalSetorId = selectedSetorId;
+        if (!finalSetorId) {
+            if (producaoSetorId) {
+                finalSetorId = producaoSetorId;
+            } else {
+                setError('Por favor, preencha todos os campos obrigatórios: Hora e Quantidade. O setor "Produção" não foi encontrado.');
+                setLoading(false);
+                return;
+            }
+        }
+
+        if (!selectedHoraApontamentoId || pecasRegistrar === '' || pecasRegistrar === null) {
+            setError('Por favor, preencha todos os campos obrigatórios: Hora e Quantidade.');
             setLoading(false);
             return;
         }
@@ -102,12 +120,6 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
             return;
         }
         
-        if (numPecasRegistrar > maxPecasRegistraveis) {
-            setError(`Quantidade não pode exceder o total de peças boas (${maxPecasRegistraveis}).`);
-            setLoading(false);
-            return;
-        }
-
         const selectedApontamento = apontamentosHorarios.find(ap => ap.id === selectedHoraApontamentoId);
         if (!selectedApontamento) {
             setError('Apontamento selecionado não encontrado.');
@@ -116,7 +128,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         }
 
         const payload = {
-            setor_id: selectedSetorId,
+            setor_id: finalSetorId,
             apontamento_injetora_id: selectedHoraApontamentoId,
             data_improdutividade: dataApontamento,
             hora_improdutividade: selectedApontamento.hora_apontamento,
@@ -178,7 +190,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                                 {horasProducaoFinalizadas.length > 0 ? (
                                     horasProducaoFinalizadas.map((apontamento) => (
                                         <MenuItem key={apontamento.id} value={apontamento.id}>
-                                            {apontamento.hora_apontamento} (Boas: {apontamento.quantidade_efetiva || 0})
+                                            {apontamento.hora_apontamento} (Boas: {apontamento.quantidade_efetiva != null ? apontamento.quantidade_efetiva : 'N/A'})
                                         </MenuItem>
                                     ))
                                 ) : (
@@ -188,7 +200,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                         </FormControl>
                     </Grid>
                     <Grid item xs={12}>
-                        <FormControl fullWidth margin="normal" required>
+                        <FormControl fullWidth margin="normal">
                             <InputLabel id="setor-select-label">Setor Responsável</InputLabel>
                             <Select
                                 labelId="setor-select-label"
@@ -198,6 +210,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                                 onChange={(e) => setSelectedSetorId(e.target.value)}
                                 disabled={loading}
                             >
+                                <MenuItem value=""><em>(Padrão: Produção)</em></MenuItem>
                                 {setores.map((setor) => (
                                     <MenuItem key={setor.id} value={setor.id}>
                                         {setor.nome_setor}
@@ -210,13 +223,13 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                         <TextField
                             fullWidth
                             margin="normal"
-                            label={`Peças a Registrar como NC (Máx: ${maxPecasRegistraveis})`}
+                            label={`Peças a Registrar como NC (Boas disponíveis: ${maxPecasRegistraveis})`}
                             type="number"
                             value={pecasRegistrar}
                             onChange={(e) => setPecasRegistrar(e.target.value)}
                             required
                             disabled={loading || !selectedHoraApontamentoId}
-                            inputProps={{ min: 1, max: maxPecasRegistraveis > 0 ? maxPecasRegistraveis : undefined }}
+                            inputProps={{ min: 1 }}
                         />
                     </Grid>
                     <Grid item xs={12}>
