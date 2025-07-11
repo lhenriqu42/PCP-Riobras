@@ -35,12 +35,11 @@ export default function AnaliseImprodutividade() {
     const [improdutividadeData, setImprodutividadeData] = useState([]);
     const [processedData, setProcessedData] = useState({});
     const [totalGeralPecasNC, setTotalGeralPecasNC] = useState(0);
-    const [setores, setSetores] = useState([]);
+    const [setores, setSetores] = useState([]); 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [expanded, setExpanded] = useState(false);
-    const [displayLimit, setDisplayLimit] = useState(5);
-
+    const [displayLimit, setDisplayLimit] = useState(5); 
     const [filters, setFilters] = useState({
         startDate: null,
         endDate: null,
@@ -48,12 +47,17 @@ export default function AnaliseImprodutividade() {
     });
 
     useEffect(() => {
-        fetchSetores();
-        fetchImprodutividadeData();
+        fetchSetores(); 
+        fetchImprodutividadeData(); 
     }, []);
 
     useEffect(() => {
-        if (improdutividadeData && improdutividadeData.length > 0) {
+        if (setores.length > 0) { 
+            const initialProcessedData = setores.reduce((acc, setor) => {
+                acc[setor.nome_setor] = { totalPecas: 0, records: [] };
+                return acc;
+            }, {});
+
             const groupedData = improdutividadeData.reduce((acc, item) => {
                 const setorNome = item.setores?.nome_setor || 'Setor Desconhecido';
                 if (!acc[setorNome]) {
@@ -62,7 +66,7 @@ export default function AnaliseImprodutividade() {
                 acc[setorNome].totalPecas += item.pecas_transferidas;
                 acc[setorNome].records.push(item);
                 return acc;
-            }, {});
+            }, { ...initialProcessedData }); 
 
             Object.keys(groupedData).forEach(setorNome => {
                 groupedData[setorNome].records.sort((a, b) => b.pecas_transferidas - a.pecas_transferidas);
@@ -71,11 +75,8 @@ export default function AnaliseImprodutividade() {
             const totalNC = improdutividadeData.reduce((sum, item) => sum + item.pecas_transferidas, 0);
             setProcessedData(groupedData);
             setTotalGeralPecasNC(totalNC);
-        } else {
-            setProcessedData({});
-            setTotalGeralPecasNC(0);
         }
-    }, [improdutividadeData]);
+    }, [improdutividadeData, setores]); 
 
     const fetchSetores = async () => {
         try {
@@ -135,7 +136,8 @@ export default function AnaliseImprodutividade() {
         setExpanded(isExpanded ? panel : false);
     };
 
-    const globalPieChartData = Object.entries(processedData).map(([setorName, details], index) => ({
+    
+    const globalSectorDistributionPieData = Object.entries(processedData).map(([setorName, details], index) => ({
         id: index,
         value: details.totalPecas,
         label: setorName,
@@ -197,7 +199,8 @@ export default function AnaliseImprodutividade() {
                     <>
                         <Paper elevation={3} sx={{ p: 3, mb: 4, borderRadius: '12px' }}>
                             <Typography variant="h6" gutterBottom align="center">Total de Peças Não Conformes por Setor</Typography>
-                            {totalGeralPecasNC > 0 ? (
+                            {}
+                            {Object.keys(processedData).length > 0 ? (
                                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                                     <BarChart
                                         series={[
@@ -239,7 +242,7 @@ export default function AnaliseImprodutividade() {
                                         </AccordionSummary>
                                         <AccordionDetails sx={{ p: 3 }}>
                                             <Grid container spacing={3} alignItems="flex-start">
-                                                {globalPieChartData.length > 0 && totalGeralPecasNC > 0 && (
+                                                {totalGeralPecasNC > 0 && ( 
                                                     <Grid item xs={12} md={6}>
                                                         <Typography variant="subtitle1" align="center" gutterBottom sx={{ fontWeight: 'bold' }}>
                                                             Distribuição de Peças NC entre Setores
@@ -248,34 +251,41 @@ export default function AnaliseImprodutividade() {
                                                             <PieChart
                                                                 series={[
                                                                     {
-                                                                        data: globalPieChartData.map(item => ({
+                                                                        data: globalSectorDistributionPieData.map(item => ({
                                                                             ...item,
-                                                                            highlighted: item.label === setorNome,
+                                                                            highlighted: item.label === setorNome, 
                                                                         })),
                                                                         innerRadius: 30,
-                                                                        outerRadius: 100,
+                                                                        outerRadius: 80, 
                                                                         paddingAngle: 5,
                                                                         cornerRadius: 5,
-                                                                        startAngle: -45,
-                                                                        endAngle: 225,
-                                                                        cx: 150,
-                                                                        cy: 150,
-                                                                        arcLabel: (item) => `${item.label} (${(item.value / totalGeralPecasNC * 100).toFixed(1)}%)`,
+                                                                        startAngle: 0, 
+                                                                        endAngle: 360, 
+                                                                        arcLabel: (item) => `${item.label} (${(item.value / totalGeralPecasNC * 100).toFixed(1)}%)`, // Inclui nome e porcentagem
                                                                         highlightScope: { faded: 'global', highlighted: 'item' },
                                                                         faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
                                                                     },
                                                                 ]}
-                                                                height={300} // altura 
-                                                                width={500} // largura
+                                                                height={300} 
+                                                                width={450} 
                                                                 slotProps={{
-                                                                    legend: { hidden: false, direction: 'column', position: { vertical: 'middle', horizontal: 'right' } },
+                                                                    legend: { 
+                                                                        hidden: false, 
+                                                                        direction: 'column', 
+                                                                        position: { vertical: 'middle', horizontal: 'right' } ,
+                                                                        itemMarkWidth: 20, 
+                                                                        itemMarkHeight: 20,
+                                                                        labelStyle: {
+                                                                            fontSize: 12,
+                                                                        }
+                                                                    },
                                                                 }}
                                                             />
                                                         </Box>
                                                     </Grid>
                                                 )}
                                                 
-                                                <Grid item xs={12} md={globalPieChartData.length > 0 && totalGeralPecasNC > 0 ? 6 : 12}>
+                                                <Grid item xs={12} md={totalGeralPecasNC > 0 ? 6 : 12}>
                                                     <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
                                                         Maiores Registros de Não Conformidade (Top {displayLimit})
                                                     </Typography>
