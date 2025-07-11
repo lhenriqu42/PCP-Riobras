@@ -1,75 +1,68 @@
-import * as React from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Divider,
+    List, ListItemButton, ListItemIcon, ListItemText, Divider, ListSubheader, Box
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import HomeIcon from '@mui/icons-material/Home';
-import QualityIcon from '@mui/icons-material/CheckCircleOutline';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import BuildIcon from '@mui/icons-material/Build';
-import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing'; 
-
+import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '@mui/material/styles';
+
+const menuItems = [
+    { text: 'Página Inicial', icon: <HomeIcon />, to: '/home', requiredLevel: 1 },
+    { text: 'Dashboard Injetora', icon: <DashboardIcon />, to: '/dashboard/injetora', requiredLevel: 1, group: 'Produção' },
+    { text: 'Apontamento Injetora', icon: <AssignmentIcon />, to: '/apontamentos/injetora/inicial', requiredLevel: 1, group: 'Produção' },
+    { text: 'Apont. Manutenção', icon: <BuildIcon />, to: '/apontamentos/manutencao', requiredLevel: 2, group: 'Análise e Gestão' },
+    { text: 'Análise de Qualidade', icon: <CheckCircleOutlineIcon />, to: '/dashboard/qualidade', requiredLevel: 2, group: 'Análise e Gestão' },
+    { text: 'Análise de Improdutividade', icon: <PrecisionManufacturingIcon />, to: '/analise/improdutividade', requiredLevel: 2, group: 'Análise e Gestão' },
+];
 
 export default function SideMenu() {
-  const { user } = useAuth();
+    const { user } = useAuth();
+    const theme = useTheme();
 
-  return (
-    <div>
-      <Divider />
-      <List>
-        <ListItem disablePadding>
-          <ListItemButton component={NavLink} to="/dashboard/injetora">
-            <ListItemIcon><DashboardIcon /></ListItemIcon>
-            <ListItemText primary="Dashboard Injetora" />
-          </ListItemButton>
-        </ListItem>
-        <ListItem disablePadding>
-          <ListItemButton component={NavLink} to="/apontamentos/injetora/inicial">
-            <ListItemIcon><AssignmentIcon /></ListItemIcon>
-            <ListItemText primary="Apontamento Injetora" />
-          </ListItemButton>
-        </ListItem>
+    const getActiveStyle = (isActive) => ({
+        backgroundColor: isActive ? theme.palette.action.selected : 'transparent',
+        color: isActive ? theme.palette.primary.main : 'inherit',
+        fontWeight: isActive ? 'bold' : 'normal',
+        margin: '4px 8px',
+        borderRadius: '8px',
+        '& .MuiListItemIcon-root': {
+            color: isActive ? theme.palette.primary.main : 'inherit',
+        },
+    });
 
-        {user && user.level >= 2 && (
-          <>
-            <ListItem disablePadding>
-              <ListItemButton component={NavLink} to="/apontamentos/manutencao">
-                <ListItemIcon><BuildIcon /></ListItemIcon>
-                <ListItemText primary="Apontamentos Manutenção" />
-              </ListItemButton>
-            </ListItem>
+    const renderMenuItems = (group) =>
+        menuItems
+            .filter(item => item.group === group && user && user.level >= item.requiredLevel)
+            .map((item) => (
+                <NavLink to={item.to} key={item.text} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    {({ isActive }) => (
+                        <ListItemButton sx={getActiveStyle(isActive)}>
+                            <ListItemIcon>{item.icon}</ListItemIcon>
+                            <ListItemText primary={item.text} />
+                        </ListItemButton>
+                    )}
+                </NavLink>
+            ));
 
-            <ListItem disablePadding>
-              <ListItemButton component={NavLink} to="/dashboard/qualidade">
-                <ListItemIcon><QualityIcon /></ListItemIcon>
-                <ListItemText primary="Análise de Qualidade" />
-              </ListItemButton>
-            </ListItem>
-
-            {}
-            <ListItem disablePadding>
-              <ListItemButton component={NavLink} to="/analise/improdutividade">
-                <ListItemIcon><PrecisionManufacturingIcon /></ListItemIcon>
-                <ListItemText primary="Análise de Improdutividade" />
-              </ListItemButton>
-            </ListItem>
-          </>
-        )}
-
-        <ListItem disablePadding>
-          <ListItemButton component={NavLink} to="/home">
-            <ListItemIcon><HomeIcon /></ListItemIcon>
-            <ListItemText primary="Página Inicial" />
-          </ListItemButton>
-        </ListItem>
-      </List>
-    </div>
-  );
+    return (
+        <Box>
+            <List>
+                {renderMenuItems(undefined)}
+            </List>
+            <Divider sx={{ my: 1 }} />
+            <List subheader={<ListSubheader>Produção</ListSubheader>}>
+                {renderMenuItems('Produção')}
+            </List>
+             <Divider sx={{ my: 1 }} />
+            <List subheader={<ListSubheader>Análise e Gestão</ListSubheader>}>
+                {renderMenuItems('Análise e Gestão')}
+            </List>
+        </Box>
+    );
 }
