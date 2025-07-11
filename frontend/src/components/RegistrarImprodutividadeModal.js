@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Modal,
-    Box,
-    Typography,
-    TextField,
-    Button,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Alert,
-    CircularProgress,
-    Grid
+    Modal, Box, Typography, TextField, Button, FormControl,
+    InputLabel, Select, MenuItem, Alert, CircularProgress, Grid, FormHelperText
 } from '@mui/material';
 import axios from 'axios';
 
@@ -24,10 +14,10 @@ const style = {
     transform: 'translate(-50%, -50%)',
     width: { xs: '90%', sm: 500 },
     bgcolor: 'background.paper',
-    border: '2px solid #000',
+    border: 'none',
     boxShadow: 24,
     p: 4,
-    borderRadius: 2,
+    borderRadius: '8px',
 };
 
 export default function RegistrarImprodutividadeModal({ open, onClose, dataApontamento, apontamentosHorarios, onSuccess }) {
@@ -40,7 +30,6 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [maxPecasRegistraveis, setMaxPecasRegistraveis] = useState(0);
 
     useEffect(() => {
         if (open) {
@@ -51,41 +40,25 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
             setSelectedHoraApontamentoId('');
             setPecasRegistrar('');
             setCausa('');
-            setMaxPecasRegistraveis(0);
         }
     }, [open]);
-
-    useEffect(() => {
-        if (selectedHoraApontamentoId) {
-            const selectedApontamento = apontamentosHorarios.find(ap => ap.id === selectedHoraApontamentoId);
-            if (selectedApontamento) {
-                setMaxPecasRegistraveis(selectedApontamento.quantidade_efetiva || 0);
-            }
-        } else {
-            setMaxPecasRegistraveis(0);
-        }
-        setPecasRegistrar('');
-    }, [selectedHoraApontamentoId, apontamentosHorarios]);
 
     const fetchSetores = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
             const response = await axios.get(`${REACT_APP_API_URL}/api/setores`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
             });
             const fetchedSetores = response.data;
             setSetores(fetchedSetores);
-
             const producao = fetchedSetores.find(setor => setor.nome_setor.toLowerCase() === 'produção');
             if (producao) {
                 setProducaoSetorId(producao.id);
             }
-            setLoading(false);
         } catch (err) {
-            setError('Erro ao carregar setores. Tente novamente.');
+            setError('Erro ao carregar setores.');
+        } finally {
             setLoading(false);
         }
     };
@@ -96,26 +69,15 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         setError('');
         setSuccess('');
 
-        let finalSetorId = selectedSetorId;
-        if (!finalSetorId) {
-            if (producaoSetorId) {
-                finalSetorId = producaoSetorId;
-            } else {
-                setError('Por favor, preencha todos os campos obrigatórios: Hora e Quantidade. O setor "Produção" não foi encontrado.');
-                setLoading(false);
-                return;
-            }
-        }
-
-        if (!selectedHoraApontamentoId || pecasRegistrar === '' || pecasRegistrar === null) {
-            setError('Por favor, preencha todos os campos obrigatórios: Hora e Quantidade.');
+        if (!selectedHoraApontamentoId || !pecasRegistrar) {
+            setError('Por favor, preencha a Hora e a Quantidade.');
             setLoading(false);
             return;
         }
 
         const numPecasRegistrar = Number(pecasRegistrar);
         if (isNaN(numPecasRegistrar) || numPecasRegistrar <= 0) {
-            setError(`Quantidade inválida. Deve ser um número positivo.`);
+            setError('Quantidade inválida. Deve ser um número positivo.');
             setLoading(false);
             return;
         }
@@ -128,102 +90,85 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         }
 
         const payload = {
-            setor_id: finalSetorId,
+            setor_id: selectedSetorId || producaoSetorId,
             apontamento_injetora_id: selectedHoraApontamentoId,
             data_improdutividade: dataApontamento,
             hora_improdutividade: selectedApontamento.hora_apontamento,
             causa: causa,
             pecas_transferidas: numPecasRegistrar,
         };
+        
+        if(!payload.setor_id) {
+            setError('O setor "Produção" não foi encontrado como padrão. Selecione um setor responsável.');
+            setLoading(false);
+            return;
+        }
 
         try {
             const token = localStorage.getItem('token');
             await axios.post(`${REACT_APP_API_URL}/api/improdutividade`, payload, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
             });
-            setSuccess('Peças não conformes registradas com sucesso!');
-            if (onSuccess) {
-                onSuccess();
-            }
-            setTimeout(() => {
-                onClose();
-            }, 1500);
+            setSuccess('Improdutividade atribuída com sucesso!');
+            if (onSuccess) onSuccess();
+            setTimeout(() => onClose(), 1500);
         } catch (err) {
-            setError('Erro ao registrar não conformidade. ' + (err.response?.data?.message || err.message));
+            setError('Erro ao registrar improdutividade. ' + (err.response?.data?.message || err.message));
         } finally {
             setLoading(false);
         }
     };
 
-    const horasProducaoFinalizadas = apontamentosHorarios.filter(ap => ap.tipo_registro === 'producao');
+    const horasDisponiveis = apontamentosHorarios.filter(ap => ap.tipo_registro !== 'parada');
+
+    const getStatusLabel = (apontamento) => {
+        if (apontamento.finalizado) {
+            return `(Finalizado - ${apontamento.quantidade_efetiva} peças)`;
+        }
+        if (apontamento.tipo_registro === 'producao') {
+            return `(Produzindo - ${apontamento.quantidade_efetiva} peças)`;
+        }
+        return '(Aguardando)';
+    }
 
     return (
-        <Modal
-            open={open}
-            onClose={onClose}
-            aria-labelledby="modal-title"
-            aria-describedby="modal-description"
-        >
+        <Modal open={open} onClose={onClose}>
             <Box sx={style} component="form" onSubmit={handleSubmit}>
-                <Typography id="modal-title" variant="h6" component="h2" gutterBottom>
-                    Registrar Peças NC por Setor
+                <Typography variant="h6" component="h2" gutterBottom>
+                    Atribuir Improdutividade ao Setor
                 </Typography>
 
-                {loading && <CircularProgress sx={{ mb: 2 }} />}
+                {loading && <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}><CircularProgress /></Box>}
                 {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
                 {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-                <Grid container spacing={2}>
-                    <Grid item xs={12}>
-                        <FormControl fullWidth margin="normal" required>
-                            <InputLabel id="hora-select-label">Hora do Apontamento de Produção</InputLabel>
+                <Grid container spacing={2} sx={{mt: 1}}>
+                    <Grid item xs={12} sm={6}>
+                        <FormControl fullWidth required>
+                            <InputLabel id="hora-select-label">Hora do Apontamento</InputLabel>
                             <Select
                                 labelId="hora-select-label"
-                                id="hora-select"
                                 value={selectedHoraApontamentoId}
-                                label="Hora do Apontamento de Produção"
+                                label="Hora do Apontamento"
                                 onChange={(e) => setSelectedHoraApontamentoId(e.target.value)}
                                 disabled={loading}
                             >
-                                {horasProducaoFinalizadas.length > 0 ? (
-                                    horasProducaoFinalizadas.map((apontamento) => (
-                                        <MenuItem key={apontamento.id} value={apontamento.id}>
-                                            {apontamento.hora_apontamento}
+                                {horasDisponiveis.length > 0 ? (
+                                    horasDisponiveis.map((ap) => (
+                                        <MenuItem key={ap.id} value={ap.id}>
+                                            {`${ap.hora_apontamento} ${getStatusLabel(ap)}`}
                                         </MenuItem>
                                     ))
                                 ) : (
-                                    <MenuItem disabled>Nenhum apontamento de produção disponível</MenuItem>
+                                    <MenuItem disabled>Nenhum horário de produção na lista</MenuItem>
                                 )}
                             </Select>
                         </FormControl>
                     </Grid>
-                    <Grid item xs={12}>
-                        <FormControl fullWidth margin="normal">
-                            <InputLabel id="setor-select-label">Setor Responsável</InputLabel>
-                            <Select
-                                labelId="setor-select-label"
-                                id="setor-select"
-                                value={selectedSetorId}
-                                label="Setor Responsável"
-                                onChange={(e) => setSelectedSetorId(e.target.value)}
-                                disabled={loading}
-                            >
-                                <MenuItem value=""><em>(Padrão: Produção)</em></MenuItem>
-                                {setores.map((setor) => (
-                                    <MenuItem key={setor.id} value={setor.id}>
-                                        {setor.nome_setor}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    </Grid>
-                    <Grid item xs={12}>
+                     <Grid item xs={12} sm={6}>
                         <TextField
                             fullWidth
-                            margin="normal"
-                            label="Peças a registrar:"
+                            label="Peças NC a atribuir"
                             type="number"
                             value={pecasRegistrar}
                             onChange={(e) => setPecasRegistrar(e.target.value)}
@@ -233,10 +178,27 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                         />
                     </Grid>
                     <Grid item xs={12}>
+                        <FormControl fullWidth>
+                            <InputLabel id="setor-select-label">Setor Responsável</InputLabel>
+                            <Select
+                                labelId="setor-select-label"
+                                value={selectedSetorId}
+                                label="Setor Responsável"
+                                onChange={(e) => setSelectedSetorId(e.target.value)}
+                                disabled={loading}
+                            >
+                                <MenuItem value=""><em>(Padrão: Produção)</em></MenuItem>
+                                {setores.map((setor) => (
+                                    <MenuItem key={setor.id} value={setor.id}>{setor.nome_setor}</MenuItem>
+                                ))}
+                            </Select>
+                             <FormHelperText>Selecione o setor que causou a perda.</FormHelperText>
+                        </FormControl>
+                    </Grid>
+                    <Grid item xs={12}>
                         <TextField
                             fullWidth
-                            margin="normal"
-                            label="Causa da Não Conformidade"
+                            label="Causa da Não Conformidade (Opcional)"
                             value={causa}
                             onChange={(e) => setCausa(e.target.value)}
                             multiline
@@ -247,19 +209,9 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                 </Grid>
 
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3, gap: 1 }}>
-                    <Button
-                        variant="outlined"
-                        onClick={onClose}
-                        disabled={loading}
-                    >
-                        Cancelar
-                    </Button>
-                    <Button
-                        variant="contained"
-                        type="submit"
-                        disabled={loading || !selectedHoraApontamentoId}
-                    >
-                        Registrar NC
+                    <Button variant="text" onClick={onClose} disabled={loading}>Cancelar</Button>
+                    <Button variant="contained" type="submit" disabled={loading || !selectedHoraApontamentoId}>
+                        Atribuir NC
                     </Button>
                 </Box>
             </Box>
