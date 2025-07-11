@@ -353,32 +353,6 @@ app.post('/api/improdutividade', authenticateToken, async (req, res) => {
             setor_id = producaoSetor.id;
         }
 
-        const { data: apontamento, error: fetchError } = await supabaseAdmin
-            .from('apontamentos_injetora')
-            .select('pecas_nc, quantidade_efetiva')
-            .eq('id', apontamento_injetora_id)
-            .single();
-
-        if (fetchError || !apontamento) {
-            return res.status(404).json({ message: 'Apontamento de origem não encontrado.' });
-        }
-
-        const newPecasNC = (apontamento.pecas_nc || 0) + numPecasRegistrar;
-        const newQuantidadeEfetiva = (apontamento.quantidade_efetiva || 0) - numPecasRegistrar;
-
-        const { error: updateError } = await supabaseAdmin
-            .from('apontamentos_injetora')
-            .update({
-                pecas_nc: newPecasNC,
-                quantidade_efetiva: newQuantidadeEfetiva,
-                ultima_atualizacao: new Date().toISOString()
-            })
-            .eq('id', apontamento_injetora_id);
-
-        if (updateError) {
-            return res.status(500).json({ message: 'Erro ao atualizar o apontamento de origem.', details: updateError.message });
-        }
-
         const { data: improdutividadeData, error: improdutividadeError } = await supabaseAdmin
             .from('improdutividade_setor')
             .insert([{
