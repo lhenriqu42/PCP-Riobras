@@ -35,7 +35,6 @@ export default function AnaliseImprodutividade() {
     const [improdutividadeData, setImprodutividadeData] = useState([]);
     const [processedData, setProcessedData] = useState({});
     const [totalGeralPecasNC, setTotalGeralPecasNC] = useState(0);
-    const [totalPecasBoasProduzidas, setTotalPecasBoasProduzidas] = useState(0);
     const [setores, setSetores] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -50,7 +49,6 @@ export default function AnaliseImprodutividade() {
     useEffect(() => {
         fetchSetores();
         fetchImprodutividadeData();
-        fetchTotalProducaoData();
     }, []);
 
     useEffect(() => {
@@ -73,10 +71,6 @@ export default function AnaliseImprodutividade() {
             setTotalGeralPecasNC(0);
         }
     }, [improdutividadeData]);
-
-    useEffect(() => {
-        fetchTotalProducaoData();
-    }, [filters.startDate, filters.endDate]);
 
     const fetchSetores = async () => {
         try {
@@ -113,31 +107,12 @@ export default function AnaliseImprodutividade() {
         }
     };
 
-    const fetchTotalProducaoData = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const params = {
-                dataInicio: filters.startDate ? moment(filters.startDate).format('YYYY-MM-DD') : undefined,
-                dataFim: filters.endDate ? moment(filters.endDate).format('YYYY-MM-DD') : undefined,
-            };
-            const response = await axios.get(`${REACT_APP_API_URL}/api/producao/total-boas`, {
-                params,
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setTotalPecasBoasProduzidas(response.data.totalBoas || 0);
-        } catch (err) {
-            console.error('Erro ao buscar total de peças boas produzidas:', err);
-            setTotalPecasBoasProduzidas(0);
-        }
-    };
-
     const handleFilterChange = (name, value) => {
         setFilters(prev => ({ ...prev, [name]: value }));
     };
     
     const handleApplyFilters = () => {
         fetchImprodutividadeData();
-        fetchTotalProducaoData();
     };
 
     const handleClearFilters = () => {
@@ -148,7 +123,6 @@ export default function AnaliseImprodutividade() {
         });
         setTimeout(() => {
             fetchImprodutividadeData();
-            fetchTotalProducaoData();
         }, 0);
     };
 
@@ -211,25 +185,25 @@ export default function AnaliseImprodutividade() {
                 {!loading && !error && (
                     <>
                         <Paper elevation={3} sx={{ p: 3, mb: 4, borderRadius: '12px' }}>
-                            <Typography variant="h6" gutterBottom align="center">Visão Geral: Produção vs. Peças Não Conformes</Typography>
-                            {(totalPecasBoasProduzidas > 0 || totalGeralPecasNC > 0) ? (
+                            <Typography variant="h6" gutterBottom align="center">Total de Peças Não Conformes por Setor</Typography>
+                            {totalGeralPecasNC > 0 ? (
                                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                                     <BarChart
                                         series={[
-                                            { data: [totalPecasBoasProduzidas], label: 'Produção (Peças Boas)', color: '#4CAF50' },
-                                            { data: [totalGeralPecasNC], label: 'Total Não Conformes', color: '#F44336' },
+                                            { 
+                                                data: Object.values(processedData).map(d => d.totalPecas), 
+                                                label: 'Peças Não Conformes', 
+                                                color: '#F44336' 
+                                            },
                                         ]}
                                         height={250}
-                                        xAxis={[{ scaleType: 'band', data: ['Resumo'] }]}
+                                        xAxis={[{ scaleType: 'band', data: Object.keys(processedData) }]}
                                     />
                                 </Box>
                             ) : (
-                                <Alert severity="info">Dados insuficientes para a visão geral.</Alert>
+                                <Alert severity="info">Nenhum registro de não conformidade encontrado para os filtros selecionados.</Alert>
                             )}
                             <Typography variant="body1" align="center" sx={{ mt: 2, fontWeight: 'bold' }}>
-                                Total de Peças Boas Produzidas: {totalPecasBoasProduzidas}
-                            </Typography>
-                            <Typography variant="body1" align="center" sx={{ fontWeight: 'bold' }}>
                                 Total de Peças Não Conformes: {totalGeralPecasNC}
                             </Typography>
                         </Paper>

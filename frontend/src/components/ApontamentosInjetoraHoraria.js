@@ -118,6 +118,7 @@ export default function ApontamentosInjetoraHoraria() {
                         tipo_registro: existing.tipo_registro,
                         finalizado: true,
                         id: existing.id,
+                        quantidade_efetiva: existing.quantidade_efetiva, 
                     };
                 }
                 return entry;
@@ -187,6 +188,7 @@ export default function ApontamentosInjetoraHoraria() {
             const updatedApontamentos = [...apontamentosHorarios];
             updatedApontamentos[index].finalizado = true;
             updatedApontamentos[index].id = response.data.id;
+            updatedApontamentos[index].quantidade_efetiva = response.data.quantidade_efetiva; 
             setApontamentosHorarios(updatedApontamentos);
 
             if (index < apontamentosHorarios.length - 1) {
@@ -219,7 +221,7 @@ export default function ApontamentosInjetoraHoraria() {
                 observacoes: editedRowData.observacoes,
                 tipo_registro: editedRowData.tipo_registro,
             };
-            await ApontamentoService.updateApontamentoInjetora(id, dataToUpdate);
+            const response = await ApontamentoService.updateApontamentoInjetora(id, dataToUpdate);
             setSuccess('Apontamento atualizado com sucesso!');
             await initializeApontamentos(initialData);
             setEditingRowId(null);
@@ -304,6 +306,7 @@ export default function ApontamentosInjetoraHoraria() {
                         updatedApontamentos[i].pecas_nc = currentPayload.pecas_nc;
                         updatedApontamentos[i].observacoes = currentPayload.observacoes;
                         updatedApontamentos[i].tipo_registro = currentPayload.tipo_registro;
+                        updatedApontamentos[i].quantidade_efetiva = response.data.quantidade_efetiva; // Update quantidade_efetiva
                         setApontamentosHorarios([...updatedApontamentos]);
                     } catch (err) {
                         console.error(err);
@@ -348,7 +351,8 @@ export default function ApontamentosInjetoraHoraria() {
         setIsImprodutividadeModalOpen(false);
     };
 
-    const handleImprodutividadeSuccess = () => {
+    const handleImprodutividadeSuccess = async () => {
+        await initializeApontamentos(initialData); 
     };
 
     if (error && !initialData) {

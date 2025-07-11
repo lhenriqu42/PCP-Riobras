@@ -426,29 +426,6 @@ app.get('/api/improdutividade/analise', authenticateToken, async (req, res) => {
     }
 });
 
-app.get('/api/producao/total-boas', authenticateToken, async (req, res) => {
-    const { dataInicio, dataFim } = req.query;
-
-    try {
-        let query = supabase
-            .from('apontamentos_injetora')
-            .select('quantidade_efetiva');
-
-        if (dataInicio && dataFim) {
-            query = query.gte('data_apontamento', dataInicio).lte('data_apontamento', dataFim);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        const totalBoas = data.reduce((sum, item) => sum + (item.quantidade_efetiva || 0), 0);
-        res.status(200).json({ totalBoas });
-    } catch (error) {
-        res.status(500).json({ message: 'Erro ao buscar o total de peças boas produzidas.', details: error.message });
-    }
-});
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);
