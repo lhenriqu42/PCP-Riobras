@@ -13,34 +13,34 @@ import { styled } from '@mui/material/styles';
 const drawerWidth = 240;
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
-  ({ theme, open }) => ({
-    flexGrow: 1,
-    paddingTop: theme.spacing(3),
-    paddingBottom: theme.spacing(3),
-    paddingLeft: theme.spacing(2),
-    paddingRight: theme.spacing(2),
-    transition: theme.transitions.create('margin', {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.leavingScreen,
-    }),
-    marginLeft: 0,
-    ...(open && {
-      transition: theme.transitions.create('margin', {
-        easing: theme.transitions.easing.easeOut,
-        duration: theme.transitions.duration.enteringScreen,
-      }),
-      marginLeft: `${drawerWidth}px`,
-    }),
-    [theme.breakpoints.down('sm')]: {
+    ({ theme, open }) => ({
+        flexGrow: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        padding: theme.spacing(3),
         marginLeft: 0,
-        paddingLeft: theme.spacing(1),
-        paddingRight: theme.spacing(1),
-    }
-  }),
+        minHeight: '100vh',
+        transition: theme.transitions.create('margin', {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+        }),
+        ...(open && {
+            marginLeft: `${drawerWidth}px`,
+            transition: theme.transitions.create('margin', {
+                easing: theme.transitions.easing.easeOut,
+                duration: theme.transitions.duration.enteringScreen,
+            }),
+        }),
+        [theme.breakpoints.down('sm')]: {
+            marginLeft: 0,
+            padding: theme.spacing(2),
+        },
+        backgroundColor: '#f4f6f8',
+    })
 );
 
 const AppBarStyled = styled(AppBar, {
-  shouldForwardProp: (prop) => prop !== 'open',
+    shouldForwardProp: (prop) => prop !== 'open',
 })(({ theme, open }) => ({
     backgroundColor: '#ffffff',
     color: theme.palette.text.primary,
@@ -61,11 +61,11 @@ const AppBarStyled = styled(AppBar, {
 }));
 
 const DrawerHeader = styled('div')(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  padding: theme.spacing(0, 1),
-  ...theme.mixins.toolbar,
-  justifyContent: 'flex-end',
+    display: 'flex',
+    alignItems: 'center',
+    padding: theme.spacing(0, 1),
+    ...theme.mixins.toolbar,
+    justifyContent: 'flex-end',
 }));
 
 export default function Layout() {
@@ -75,7 +75,7 @@ export default function Layout() {
 
     const [open, setOpen] = useState(true);
 
-    const handleDrawerToogle = () => {
+    const handleDrawerToggle = () => {
         setOpen(!open);
     };
 
@@ -92,7 +92,7 @@ export default function Layout() {
                     <IconButton
                         color="inherit"
                         aria-label="toggle drawer"
-                        onClick={handleDrawerToogle}
+                        onClick={handleDrawerToggle}
                         edge="start"
                     >
                         <MenuIcon />
@@ -110,7 +110,7 @@ export default function Layout() {
                     </Box>
                 </Toolbar>
             </AppBarStyled>
-            
+
             <Drawer
                 sx={{
                     width: drawerWidth,
@@ -126,17 +126,19 @@ export default function Layout() {
                 open={open}
             >
                 <DrawerHeader>
-                    <Typography variant="h6" sx={{mr: 'auto', ml: 2, fontWeight: 'bold' }}>Menu</Typography>
-                    <IconButton onClick={handleDrawerToogle}>
+                    <Typography variant="h6" sx={{ mr: 'auto', ml: 2, fontWeight: 'bold' }}>Menu</Typography>
+                    <IconButton onClick={handleDrawerToggle}>
                         <ChevronLeftIcon />
                     </IconButton>
                 </DrawerHeader>
                 <SideMenu />
             </Drawer>
 
-            <Main open={open} sx={{ backgroundColor: '#f4f6f8', minHeight: '100vh' }}>
-                <Toolbar /> 
-                <Outlet />
+            <Main open={open}>
+                <Toolbar />
+                <Box sx={{ width: '100%' }}>
+                    <Outlet />
+                </Box>
             </Main>
         </Box>
     );

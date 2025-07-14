@@ -106,7 +106,6 @@ export default function ApontamentosInjetoraHoraria() {
 
             const existingApontamentos = response;
             const updatedEntries = entries.map(entry => {
-                // Formata a hora_apontamento do apontamento existente para o mesmo formato (HH:mm)
                 const existing = existingApontamentos.find(
                     ap => moment(ap.hora_apontamento, 'HH:mm:ss').format('HH:mm') === entry.hora
                 );
@@ -598,7 +597,7 @@ export default function ApontamentosInjetoraHoraria() {
                 open={isImprodutividadeModalOpen}
                 onClose={handleCloseImprodutividadeModal}
                 dataApontamento={initialData?.dataApontamento}
-                apontamentosHorarios={apontamentosHorarios}
+                turno={initialData?.turno}
                 onSuccess={handleImprodutividadeSuccess}
             />
         </Box>

@@ -4,6 +4,7 @@ import {
     InputLabel, Select, MenuItem, Alert, CircularProgress, Grid, FormHelperText
 } from '@mui/material';
 import axios from 'axios';
+import moment from 'moment';
 
 const REACT_APP_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -20,16 +21,17 @@ const style = {
     borderRadius: '8px',
 };
 
-export default function RegistrarImprodutividadeModal({ open, onClose, dataApontamento, apontamentosHorarios, onSuccess }) {
+export default function RegistrarImprodutividadeModal({ open, onClose, dataApontamento, turno, onSuccess }) {
     const [setores, setSetores] = useState([]);
     const [selectedSetorId, setSelectedSetorId] = useState('');
     const [producaoSetorId, setProducaoSetorId] = useState('');
-    const [selectedHoraApontamentoId, setSelectedHoraApontamentoId] = useState('');
+    const [selectedHoraApontamento, setSelectedHoraApontamento] = useState('');
     const [pecasRegistrar, setPecasRegistrar] = useState('');
     const [causa, setCausa] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [horasFixasDoTurno, setHorasFixasDoTurno] = useState([]);
 
     useEffect(() => {
         if (open) {
@@ -37,11 +39,31 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
             setError('');
             setSuccess('');
             setSelectedSetorId('');
-            setSelectedHoraApontamentoId('');
+            setSelectedHoraApontamento('');
             setPecasRegistrar('');
             setCausa('');
+            
+            const entries = [];
+            let startMoment;
+            let endMoment;
+
+            if (turno === 'Manha') {
+                startMoment = moment(dataApontamento + ' 07:00', 'YYYY-MM-DD HH:mm');
+                endMoment = moment(dataApontamento + ' 18:00', 'YYYY-MM-DD HH:mm');
+            } else {
+                startMoment = moment(dataApontamento + ' 18:00', 'YYYY-MM-DD HH:mm');
+                endMoment = moment(dataApontamento, 'YYYY-MM-DD').add(1, 'days').set({ hour: 7, minute: 0 });
+            }
+
+            let current = moment(startMoment);
+            while (current.isBefore(endMoment)) {
+                const hora = current.format('HH:mm:ss');
+                entries.push(hora);
+                current.add(1, 'hour');
+            }
+            setHorasFixasDoTurno(entries);
         }
-    }, [open]);
+    }, [open, dataApontamento, turno]);
 
     const fetchSetores = async () => {
         setLoading(true);
@@ -69,7 +91,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         setError('');
         setSuccess('');
 
-        if (!selectedHoraApontamentoId || !pecasRegistrar) {
+        if (!selectedHoraApontamento || !pecasRegistrar) {
             setError('Por favor, preencha a Hora e a Quantidade.');
             setLoading(false);
             return;
@@ -82,24 +104,10 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
             return;
         }
         
-        const selectedApontamento = apontamentosHorarios.find(ap => ap.id === selectedHoraApontamentoId);
-        if (!selectedApontamento) {
-            setError('Apontamento selecionado não encontrado.');
-            setLoading(false);
-            return;
-        }
-
-        if (!selectedApontamento.hora_apontamento) {
-            setError('O apontamento selecionado não possui um horário válido.');
-            setLoading(false);
-            return;
-        }
-
         const payload = {
             setor_id: selectedSetorId || producaoSetorId,
-            apontamento_injetora_id: selectedHoraApontamentoId,
             data_improdutividade: dataApontamento,
-            hora_improdutividade: selectedApontamento.hora_apontamento,
+            hora_improdutividade: selectedHoraApontamento,
             causa: causa,
             pecas_transferidas: numPecasRegistrar,
         };
@@ -125,19 +133,6 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         }
     };
 
-    const horasDisponiveis = apontamentosHorarios.filter(ap => ap.tipo_registro !== 'parada');
-
-    const getStatusLabel = (apontamento) => {
-        const statusText = apontamento.tipo_registro === 'producao' ? 'Produzindo' : 'Aguardando';
-        const pecasText = apontamento.quantidade_efetiva !== null ? `${apontamento.quantidade_efetiva} peças` : 'undefined peças';
-        
-        if (apontamento.tipo_registro === 'producao' && apontamento.quantidade_injetada > 0) {
-             return `(Finalizado - ${apontamento.quantidade_efetiva} peças)`;
-        }
-        
-        return `(${statusText} - ${pecasText})`;
-    }
-
     return (
         <Modal open={open} onClose={onClose}>
             <Box sx={style} component="form" onSubmit={handleSubmit}>
@@ -155,20 +150,20 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                             <InputLabel id="hora-select-label">Hora do Apontamento</InputLabel>
                             <Select
                                 labelId="hora-select-label"
-                                value={selectedHoraApontamentoId}
+                                value={selectedHoraApontamento}
                                 label="Hora do Apontamento"
-                                onChange={(e) => setSelectedHoraApontamentoId(e.target.value)}
+                                onChange={(e) => setSelectedHoraApontamento(e.target.value)}
                                 disabled={loading}
                                 sx={{ minWidth: 120, width: 'auto' }}
                             >
-                                {horasDisponiveis.length > 0 ? (
-                                    horasDisponiveis.map((ap) => (
-                                        <MenuItem key={ap.id} value={ap.id}>
-                                            {`${ap.hora_apontamento} ${getStatusLabel(ap)}`}
+                                {horasFixasDoTurno.length > 0 ? (
+                                    horasFixasDoTurno.map((hora, index) => (
+                                        <MenuItem key={index} value={hora}>
+                                            {hora}
                                         </MenuItem>
                                     ))
                                 ) : (
-                                    <MenuItem disabled>Nenhum horário de produção na lista</MenuItem>
+                                    <MenuItem disabled>Carregando horários...</MenuItem>
                                 )}
                             </Select>
                         </FormControl>
@@ -181,7 +176,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                             value={pecasRegistrar}
                             onChange={(e) => setPecasRegistrar(e.target.value)}
                             required
-                            disabled={loading || !selectedHoraApontamentoId}
+                            disabled={loading || !selectedHoraApontamento}
                             inputProps={{ min: 1 }}
                         />
                     </Grid>
@@ -219,7 +214,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
 
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3, gap: 1 }}>
                     <Button variant="text" onClick={onClose} disabled={loading}>Cancelar</Button>
-                    <Button variant="contained" type="submit" disabled={loading || !selectedHoraApontamentoId}>
+                    <Button variant="contained" type="submit" disabled={loading || !selectedHoraApontamento}>
                         Atribuir NC
                     </Button>
                 </Box>

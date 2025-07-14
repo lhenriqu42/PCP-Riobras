@@ -85,15 +85,17 @@ export default function ApontamentosInjetoraInicial() {
 
                 <Box component="form" onSubmit={handleSubmit}>
                     <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6} md={4}> {}
+                        <Grid item xs={12} sm={6} md={4}>
                             <FormControl fullWidth required>
-                                <InputLabel>Tipo de Injetora</InputLabel>
+                                <InputLabel shrink={Boolean(formData.tipoInjetora)}>Tipo de Injetora</InputLabel>
                                 <Select
                                     name="tipoInjetora"
                                     value={formData.tipoInjetora}
                                     label="Tipo de Injetora"
                                     onChange={handleChange}
+                                    displayEmpty
                                 >
+                                    <MenuItem value=""><em>Selecione</em></MenuItem>
                                     <MenuItem value="200">200T</MenuItem>
                                     <MenuItem value="250">250T</MenuItem>
                                     <MenuItem value="300">300T</MenuItem>
@@ -101,16 +103,19 @@ export default function ApontamentosInjetoraInicial() {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={4}> {}
+
+                        <Grid item xs={12} sm={6} md={4}>
                             <FormControl fullWidth required>
-                                <InputLabel>Máquina</InputLabel>
+                                <InputLabel shrink={Boolean(formData.maquina)}>Máquina</InputLabel>
                                 <Select
                                     name="maquina"
                                     value={formData.maquina}
                                     label="Máquina"
                                     onChange={handleChange}
                                     disabled={!formData.tipoInjetora || loading}
+                                    displayEmpty
                                 >
+                                    <MenuItem value=""><em>Selecione</em></MenuItem>
                                     {maquinasFiltradas.map((maq) => (
                                         <MenuItem key={maq.nome_maquina} value={maq.nome_maquina}>
                                             {maq.nome_maquina}
@@ -119,22 +124,26 @@ export default function ApontamentosInjetoraInicial() {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={4}> {}
+
+                        <Grid item xs={12} sm={6} md={4}>
                             <FormControl fullWidth required>
-                                <InputLabel>Turno</InputLabel>
+                                <InputLabel shrink={Boolean(formData.turno)}>Turno</InputLabel>
                                 <Select
                                     name="turno"
                                     value={formData.turno}
                                     label="Turno"
                                     onChange={handleChange}
+                                    displayEmpty
                                 >
+                                    <MenuItem value=""><em>Selecione</em></MenuItem>
                                     <MenuItem value="Manha">Manhã (07:00 - 18:00)</MenuItem>
                                     <MenuItem value="Noite">Noite (18:00 - 07:00)</MenuItem>
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={4}> {}
-                           <TextField
+
+                        <Grid item xs={12} sm={6} md={4}>
+                            <TextField
                                 label="Data do Apontamento"
                                 type="date"
                                 name="dataApontamento"
@@ -142,9 +151,11 @@ export default function ApontamentosInjetoraInicial() {
                                 onChange={handleChange}
                                 fullWidth
                                 required
+                                InputLabelProps={{ shrink: true }}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6} md={4}> {}
+
+                        <Grid item xs={12} sm={6} md={4}>
                             <Autocomplete
                                 options={funcionarios}
                                 getOptionLabel={(option) => option.nome_completo || ''}
@@ -155,8 +166,9 @@ export default function ApontamentosInjetoraInicial() {
                                 noOptionsText={loading ? "Carregando..." : "Nenhum funcionário encontrado"}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6} md={4}> {}
-                           <Autocomplete
+
+                        <Grid item xs={12} sm={6} md={4}>
+                            <Autocomplete
                                 options={pecas}
                                 getOptionLabel={(option) => `${option.descricao_peca} (${option.codigo_peca})` || ''}
                                 value={formData.peca}
@@ -166,6 +178,7 @@ export default function ApontamentosInjetoraInicial() {
                                 noOptionsText={loading ? "Carregando..." : "Nenhuma peça encontrada"}
                             />
                         </Grid>
+
                         <Grid item xs={12}>
                             <Button
                                 variant="contained"
