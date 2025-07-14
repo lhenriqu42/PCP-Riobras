@@ -17,8 +17,8 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
     flexGrow: 1,
     paddingTop: theme.spacing(3),
     paddingBottom: theme.spacing(3),
-    paddingLeft: theme.spacing(4),
-    paddingRight: theme.spacing(4),
+    paddingLeft: theme.spacing(2),
+    paddingRight: theme.spacing(2),
     transition: theme.transitions.create('margin', {
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen,
@@ -33,8 +33,8 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
     }),
     [theme.breakpoints.down('sm')]: {
         marginLeft: 0,
-        paddingLeft: theme.spacing(2),
-        paddingRight: theme.spacing(2),
+        paddingLeft: theme.spacing(1),
+        paddingRight: theme.spacing(1),
     }
   }),
 );

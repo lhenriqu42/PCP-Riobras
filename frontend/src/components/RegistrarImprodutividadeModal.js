@@ -128,13 +128,14 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
     const horasDisponiveis = apontamentosHorarios.filter(ap => ap.tipo_registro !== 'parada');
 
     const getStatusLabel = (apontamento) => {
-        if (apontamento.finalizado) {
-            return `(Finalizado - ${apontamento.quantidade_efetiva} peças)`;
+        const statusText = apontamento.tipo_registro === 'producao' ? 'Produzindo' : 'Aguardando';
+        const pecasText = apontamento.quantidade_efetiva !== null ? `${apontamento.quantidade_efetiva} peças` : 'undefined peças';
+        
+        if (apontamento.tipo_registro === 'producao' && apontamento.quantidade_injetada > 0) {
+             return `(Finalizado - ${apontamento.quantidade_efetiva} peças)`;
         }
-        if (apontamento.tipo_registro === 'producao') {
-            return `(Produzindo - ${apontamento.quantidade_efetiva} peças)`;
-        }
-        return '(Aguardando)';
+        
+        return `(${statusText} - ${pecasText})`;
     }
 
     return (
@@ -158,6 +159,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                                 label="Hora do Apontamento"
                                 onChange={(e) => setSelectedHoraApontamentoId(e.target.value)}
                                 disabled={loading}
+                                sx={{ minWidth: 120, width: 'auto' }}
                             >
                                 {horasDisponiveis.length > 0 ? (
                                     horasDisponiveis.map((ap) => (
@@ -171,7 +173,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                             </Select>
                         </FormControl>
                     </Grid>
-                     <Grid item xs={12} sm={6}>
+                    <Grid item xs={12} sm={6}>
                         <TextField
                             fullWidth
                             label="Peças NC a atribuir"
@@ -192,6 +194,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                                 label="Setor Responsável"
                                 onChange={(e) => setSelectedSetorId(e.target.value)}
                                 disabled={loading}
+                                sx={{ minWidth: 120, width: 'auto' }}
                             >
                                 <MenuItem value=""><em>(Padrão: Produção)</em></MenuItem>
                                 {setores.map((setor) => (
