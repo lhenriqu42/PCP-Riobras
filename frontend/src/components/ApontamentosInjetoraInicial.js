@@ -94,6 +94,10 @@ export default function ApontamentosInjetoraInicial() {
                                     value={formData.tipoInjetora}
                                     onChange={handleChange}
                                     displayEmpty
+                                    renderValue={(selected) => {
+                                        if (!selected) return <em>Selecione</em>;
+                                        return selected + 'T';
+                                    }}
                                 >
                                     <MenuItem value=""><em>Selecione</em></MenuItem>
                                     <MenuItem value="200">200T</MenuItem>
@@ -114,6 +118,10 @@ export default function ApontamentosInjetoraInicial() {
                                     onChange={handleChange}
                                     disabled={!formData.tipoInjetora || loading}
                                     displayEmpty
+                                    renderValue={(selected) => {
+                                        if (!selected) return <em>Selecione</em>;
+                                        return selected;
+                                    }}
                                 >
                                     <MenuItem value=""><em>Selecione</em></MenuItem>
                                     {maquinasFiltradas.map((maq) => (
@@ -134,6 +142,12 @@ export default function ApontamentosInjetoraInicial() {
                                     value={formData.turno}
                                     onChange={handleChange}
                                     displayEmpty
+                                    renderValue={(selected) => {
+                                        if (!selected) return <em>Selecione</em>;
+                                        return selected === 'Manha'
+                                            ? 'Manhã (07:00 - 18:00)'
+                                            : 'Noite (18:00 - 07:00)';
+                                    }}
                                 >
                                     <MenuItem value=""><em>Selecione</em></MenuItem>
                                     <MenuItem value="Manha">Manhã (07:00 - 18:00)</MenuItem>

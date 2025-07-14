@@ -333,7 +333,7 @@ app.post('/api/improdutividade', authenticateToken, async (req, res) => {
     const usuario_registro = req.user ? req.user.username : 'Desconhecido';
     const numPecasRegistrar = Number(pecas_transferidas);
 
-    if (!apontamento_injetora_id || !data_improdutividade || !hora_improdutividade || !numPecasRegistrar || numPecasRegistrar <= 0) {
+    if (!data_improdutividade || !hora_improdutividade || !numPecasRegistrar || numPecasRegistrar <= 0) {
         return res.status(400).json({ message: 'Campos obrigatórios faltando ou inválidos.' });
     }
 
@@ -355,7 +355,7 @@ app.post('/api/improdutividade', authenticateToken, async (req, res) => {
             .from('improdutividade_setor')
             .insert([{
                 setor_id,
-                apontamento_injetora_id,
+                apontamento_injetora_id: apontamento_injetora_id || null,
                 data_improdutividade,
                 hora_improdutividade,
                 causa,
