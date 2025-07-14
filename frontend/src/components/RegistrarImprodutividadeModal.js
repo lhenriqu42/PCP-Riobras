@@ -21,7 +21,7 @@ const style = {
     borderRadius: '8px',
 };
 
-export default function RegistrarImprodutividadeModal({ open, onClose, dataApontamento, turno, onSuccess }) {
+export default function RegistrarImprodutividadeModal({ open, onClose, dataApontamento, turno, apontamentoId, onSuccess }) {
     const [setores, setSetores] = useState([]);
     const [selectedSetorId, setSelectedSetorId] = useState('');
     const [producaoSetorId, setProducaoSetorId] = useState('');
@@ -110,6 +110,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
             hora_improdutividade: selectedHoraApontamento,
             causa: causa,
             pecas_transferidas: numPecasRegistrar,
+            apontamento_injetora_id: apontamentoId,
         };
         
         if(!payload.setor_id) {

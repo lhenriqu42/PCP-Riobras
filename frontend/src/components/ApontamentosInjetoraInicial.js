@@ -87,11 +87,11 @@ export default function ApontamentosInjetoraInicial() {
                     <Grid container spacing={3}>
                         <Grid item xs={12} sm={6} md={4}>
                             <FormControl fullWidth required>
-                                <InputLabel shrink={Boolean(formData.tipoInjetora)}>Tipo de Injetora</InputLabel>
+                                <InputLabel id="tipo-injetora-label">Tipo de Injetora</InputLabel>
                                 <Select
+                                    labelId="tipo-injetora-label"
                                     name="tipoInjetora"
                                     value={formData.tipoInjetora}
-                                    label="Tipo de Injetora"
                                     onChange={handleChange}
                                     displayEmpty
                                 >
@@ -106,11 +106,11 @@ export default function ApontamentosInjetoraInicial() {
 
                         <Grid item xs={12} sm={6} md={4}>
                             <FormControl fullWidth required>
-                                <InputLabel shrink={Boolean(formData.maquina)}>Máquina</InputLabel>
+                                <InputLabel id="maquina-label">Máquina</InputLabel>
                                 <Select
+                                    labelId="maquina-label"
                                     name="maquina"
                                     value={formData.maquina}
-                                    label="Máquina"
                                     onChange={handleChange}
                                     disabled={!formData.tipoInjetora || loading}
                                     displayEmpty
@@ -127,11 +127,11 @@ export default function ApontamentosInjetoraInicial() {
 
                         <Grid item xs={12} sm={6} md={4}>
                             <FormControl fullWidth required>
-                                <InputLabel shrink={Boolean(formData.turno)}>Turno</InputLabel>
+                                <InputLabel id="turno-label">Turno</InputLabel>
                                 <Select
+                                    labelId="turno-label"
                                     name="turno"
                                     value={formData.turno}
-                                    label="Turno"
                                     onChange={handleChange}
                                     displayEmpty
                                 >
