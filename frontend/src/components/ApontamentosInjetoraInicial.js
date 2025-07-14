@@ -53,7 +53,14 @@ export default function ApontamentosInjetoraInicial() {
         e.preventDefault();
         setError('');
 
-        if (Object.values(formData).some(val => !val)) {
+        const isFormValid = Object.entries(formData).every(([key, value]) => {
+            if (key === 'funcionario' || key === 'peca') {
+                return value !== null;
+            }
+            return value !== '' && value !== null && value !== undefined;
+        });
+
+        if (!isFormValid) {
             setError('Por favor, preencha todos os campos obrigatórios.');
             return;
         }
@@ -86,14 +93,17 @@ export default function ApontamentosInjetoraInicial() {
                 <Box component="form" onSubmit={handleSubmit}>
                     <Grid container spacing={3}>
                         <Grid item xs={12} sm={6} md={4}>
-                            <FormControl fullWidth required>
-                                <InputLabel id="tipo-injetora-label">Tipo de Injetora</InputLabel>
+                            <FormControl fullWidth required size="medium">
+                                <InputLabel id="tipo-injetora-label" shrink>
+                                    Tipo de Injetora
+                                </InputLabel>
                                 <Select
                                     labelId="tipo-injetora-label"
                                     name="tipoInjetora"
                                     value={formData.tipoInjetora}
                                     onChange={handleChange}
                                     displayEmpty
+                                    label="Tipo de Injetora"
                                     renderValue={(selected) => {
                                         if (!selected) return <em>Selecione</em>;
                                         return selected + 'T';
@@ -109,8 +119,10 @@ export default function ApontamentosInjetoraInicial() {
                         </Grid>
 
                         <Grid item xs={12} sm={6} md={4}>
-                            <FormControl fullWidth required>
-                                <InputLabel id="maquina-label">Máquina</InputLabel>
+                            <FormControl fullWidth required size="medium">
+                                <InputLabel id="maquina-label" shrink>
+                                    Máquina
+                                </InputLabel>
                                 <Select
                                     labelId="maquina-label"
                                     name="maquina"
@@ -118,6 +130,7 @@ export default function ApontamentosInjetoraInicial() {
                                     onChange={handleChange}
                                     disabled={!formData.tipoInjetora || loading}
                                     displayEmpty
+                                    label="Máquina"
                                     renderValue={(selected) => {
                                         if (!selected) return <em>Selecione</em>;
                                         return selected;
@@ -134,14 +147,17 @@ export default function ApontamentosInjetoraInicial() {
                         </Grid>
 
                         <Grid item xs={12} sm={6} md={4}>
-                            <FormControl fullWidth required>
-                                <InputLabel id="turno-label">Turno</InputLabel>
+                            <FormControl fullWidth required size="medium">
+                                <InputLabel id="turno-label" shrink>
+                                    Turno
+                                </InputLabel>
                                 <Select
                                     labelId="turno-label"
                                     name="turno"
                                     value={formData.turno}
                                     onChange={handleChange}
                                     displayEmpty
+                                    label="Turno"
                                     renderValue={(selected) => {
                                         if (!selected) return <em>Selecione</em>;
                                         return selected === 'Manha'
@@ -166,6 +182,7 @@ export default function ApontamentosInjetoraInicial() {
                                 fullWidth
                                 required
                                 InputLabelProps={{ shrink: true }}
+                                size="medium"
                             />
                         </Grid>
 
@@ -176,8 +193,9 @@ export default function ApontamentosInjetoraInicial() {
                                 value={formData.funcionario}
                                 onChange={handleAutocompleteChange('funcionario')}
                                 isOptionEqualToValue={(option, value) => option.nome_completo === value.nome_completo}
-                                renderInput={(params) => <TextField {...params} label="Funcionário" required />}
+                                renderInput={(params) => <TextField {...params} label="Funcionário" required size="medium" />}
                                 noOptionsText={loading ? "Carregando..." : "Nenhum funcionário encontrado"}
+                                fullWidth
                             />
                         </Grid>
 
@@ -188,8 +206,9 @@ export default function ApontamentosInjetoraInicial() {
                                 value={formData.peca}
                                 onChange={handleAutocompleteChange('peca')}
                                 isOptionEqualToValue={(option, value) => option.codigo_peca === value.codigo_peca}
-                                renderInput={(params) => <TextField {...params} label="Peça" required />}
+                                renderInput={(params) => <TextField {...params} label="Peça" required size="medium" />}
                                 noOptionsText={loading ? "Carregando..." : "Nenhuma peça encontrada"}
+                                fullWidth
                             />
                         </Grid>
 
