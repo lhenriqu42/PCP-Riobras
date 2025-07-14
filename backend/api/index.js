@@ -134,7 +134,6 @@ app.post('/api/meta-producao', authenticateToken, async (req, res) => {
                 {
                     chave: 'meta_producao_diaria',
                     valor: metaValue,
-                    ultima_atualizacao: new Date().toISOString(),
                     atualizado_por: user.username || 'Desconhecido'
                 },
                 { onConflict: 'chave', ignoreDuplicates: false }
@@ -225,7 +224,6 @@ app.put('/api/apontamentos/injetora/:id', authenticateToken, async (req, res) =>
                 tipo_registro,
                 quantidade_efetiva,
                 finalizado,
-                ultima_atualizacao: new Date().toISOString()
             })
             .eq('id', id)
             .select();
