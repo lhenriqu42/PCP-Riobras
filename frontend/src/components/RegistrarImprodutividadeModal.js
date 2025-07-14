@@ -89,6 +89,12 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
             return;
         }
 
+        if (!selectedApontamento.hora_apontamento) {
+            setError('O apontamento selecionado não possui um horário válido.');
+            setLoading(false);
+            return;
+        }
+
         const payload = {
             setor_id: selectedSetorId || producaoSetorId,
             apontamento_injetora_id: selectedHoraApontamentoId,
