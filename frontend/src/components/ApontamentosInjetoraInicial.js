@@ -85,7 +85,7 @@ export default function ApontamentosInjetoraInicial() {
 
                 <Box component="form" onSubmit={handleSubmit}>
                     <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={6} md={4}> {}
                             <FormControl fullWidth required>
                                 <InputLabel>Tipo de Injetora</InputLabel>
                                 <Select
@@ -101,7 +101,7 @@ export default function ApontamentosInjetoraInicial() {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={6} md={4}> {}
                             <FormControl fullWidth required>
                                 <InputLabel>Máquina</InputLabel>
                                 <Select
@@ -119,7 +119,7 @@ export default function ApontamentosInjetoraInicial() {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={6} md={4}> {}
                             <FormControl fullWidth required>
                                 <InputLabel>Turno</InputLabel>
                                 <Select
@@ -133,7 +133,7 @@ export default function ApontamentosInjetoraInicial() {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={6} md={4}> {}
                            <TextField
                                 label="Data do Apontamento"
                                 type="date"
@@ -144,7 +144,7 @@ export default function ApontamentosInjetoraInicial() {
                                 required
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={6} md={4}> {}
                             <Autocomplete
                                 options={funcionarios}
                                 getOptionLabel={(option) => option.nome_completo || ''}
@@ -155,7 +155,7 @@ export default function ApontamentosInjetoraInicial() {
                                 noOptionsText={loading ? "Carregando..." : "Nenhum funcionário encontrado"}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={6} md={4}> {}
                            <Autocomplete
                                 options={pecas}
                                 getOptionLabel={(option) => `${option.descricao_peca} (${option.codigo_peca})` || ''}
