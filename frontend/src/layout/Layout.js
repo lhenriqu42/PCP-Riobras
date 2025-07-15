@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     Box, Toolbar, Drawer, IconButton, AppBar,
-    Typography, Button, CssBaseline, useTheme
+    Typography, Button, CssBaseline, useTheme, Container 
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -135,7 +135,9 @@ export default function Layout() {
 
             <Main open={open}>
                 <Toolbar />
-                <Outlet />
+                <Container maxWidth="lg" sx={{ pt: 2, pb: 2, flexGrow: 1 }}>
+                    <Outlet />
+                </Container>
             </Main>
         </Box>
     );
