@@ -173,10 +173,14 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
         funcionario, peca, quantidade_injetada, pecas_nc, observacoes, tipo_registro
     } = req.body;
 
-    const quantidade_efetiva = quantidade_injetada - pecas_nc;
+    if (quantidade_injetada === null || typeof quantidade_injetada === 'undefined' || pecas_nc === null || typeof pecas_nc === 'undefined') {
+        return res.status(400).json({ message: 'Quantidade injetada e peças NC são obrigatórias.' });
+    }
+
+    const quantidade_efetiva = Number(quantidade_injetada) - Number(pecas_nc);
 
     try {
-        const { data, error } = await supabaseAdmin
+        const { data: apontamentoData, error: apontamentoError } = await supabaseAdmin
             .from('apontamentos_injetora')
             .insert([{
                 tipo_injetora: tipoInjetora,
@@ -186,20 +190,56 @@ app.post('/api/apontamentos/injetora', authenticateToken, async (req, res) => {
                 maquina: maquina,
                 funcionario: funcionario,
                 peca: peca,
-                quantidade_injetada: quantidade_injetada,
-                pecas_nc: pecas_nc,
+                quantidade_injetada: Number(quantidade_injetada),
+                pecas_nc: Number(pecas_nc),
                 observacoes: observacoes,
                 tipo_registro: tipo_registro,
                 quantidade_efetiva
             }])
-            .select();
+            .select()
+            .single();
 
-        if (error) throw error;
-        res.status(201).json(data[0]);
+        if (apontamentoError) throw apontamentoError;
+
+        if (Number(pecas_nc) > 0) {
+            try {
+                const { data: setorProducao, error: setorError } = await supabaseAdmin
+                    .from('setores')
+                    .select('id')
+                    .ilike('nome_setor', 'produção')
+                    .single();
+
+                if (setorError || !setorProducao) {
+                    console.error('ERRO CRÍTICO: Setor "Produção" não encontrado para registro automático de NC.');
+                } else {
+                    const { error: improdutividadeError } = await supabaseAdmin
+                        .from('improdutividade_setor')
+                        .insert([{
+                            setor_id: setorProducao.id,
+                            apontamento_injetora_id: apontamentoData.id,
+                            data_improdutividade: dataApontamento,
+                            hora_improdutividade: hora_apontamento,
+                            causa: 'Registro automático de Peças Não Conformes da produção.',
+                            pecas_transferidas: Number(pecas_nc),
+                            usuario_registro: req.user ? req.user.username : 'Sistema'
+                        }]);
+
+                    if (improdutividadeError) {
+                        console.error('Erro ao inserir registro de improdutividade automático:', improdutividadeError.message);
+                    }
+                }
+            } catch (autoNcError) {
+                console.error('Falha geral no bloco de registro automático de NC:', autoNcError.message);
+            }
+        }
+
+        res.status(201).json(apontamentoData);
+
     } catch (error) {
         res.status(500).json({ message: 'Erro ao inserir apontamento.', details: error.message });
     }
 });
+
 
 app.put('/api/apontamentos/injetora/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
