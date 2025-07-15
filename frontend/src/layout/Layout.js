@@ -135,7 +135,7 @@ export default function Layout() {
 
             <Main open={open}>
                 <Toolbar />
-                <Container maxWidth="lg" sx={{ pt: 2, pb: 2, flexGrow: 1 }}>
+                <Container maxWidth={false} sx={{ pt: 2, pb: 2, flexGrow: 1 }}>
                     <Outlet />
                 </Container>
             </Main>
