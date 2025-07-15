@@ -185,7 +185,7 @@ export default function ApontamentosInjetoraInicial() {
                             />
                         </Grid>
 
-                        <Grid item xs={12} sm={12} md={8}>
+                        <Grid item xs={12} sm={12} md={12}>
                             <Autocomplete
                                 options={funcionarios}
                                 getOptionLabel={(option) => option.nome_completo || ''}
@@ -200,7 +200,7 @@ export default function ApontamentosInjetoraInicial() {
                             />
                         </Grid>
 
-                        <Grid item xs={12} sm={12} md={8}>
+                        <Grid item xs={12} sm={12} md={12}>
                             <Autocomplete
                                 options={pecas}
                                 getOptionLabel={(option) => `${option.descricao_peca} (${option.codigo_peca})` || ''}
