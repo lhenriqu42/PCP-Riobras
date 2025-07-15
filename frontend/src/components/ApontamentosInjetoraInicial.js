@@ -30,7 +30,7 @@ export default function ApontamentosInjetoraInicial() {
                 setMaquinas(response.data.maquinas || []);
                 setFuncionarios(response.data.funcionarios || []);
                 setPecas(response.data.pecas || []);
-            } catch (err) {
+            } catch {
                 setError('Não foi possível carregar os dados de apoio (máquinas, peças, etc).');
             } finally {
                 setLoading(false);
@@ -53,9 +53,7 @@ export default function ApontamentosInjetoraInicial() {
         setError('');
 
         const isFormValid = Object.entries(formData).every(([key, value]) => {
-            if (key === 'funcionario' || key === 'peca') {
-                return value !== null;
-            }
+            if (key === 'funcionario' || key === 'peca') return value !== null;
             return value !== '' && value !== null && value !== undefined;
         });
 
@@ -69,7 +67,7 @@ export default function ApontamentosInjetoraInicial() {
             funcionario: formData.funcionario.nome_completo,
             peca: formData.peca.codigo_peca,
         };
-        
+
         navigate('/apontamentos/injetora/horaria', { state: { initialData: initialDataToSend } });
     };
 
@@ -78,7 +76,7 @@ export default function ApontamentosInjetoraInicial() {
         : [];
 
     return (
-        <Paper elevation={3} sx={{ p: { xs: 2, sm: 4 }, borderRadius: '12px' }}>
+        <Paper elevation={3} sx={{ p: { xs: 2, sm: 4 }, borderRadius: '12px', minWidth: '1000px' }}>
             <Box>
                 <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
                     Apontamento de Injetora
@@ -185,7 +183,7 @@ export default function ApontamentosInjetoraInicial() {
                             />
                         </Grid>
 
-                        <Grid item xs={12} sm={12} md={12}>
+                        <Grid item xs={12}>
                             <Autocomplete
                                 options={funcionarios}
                                 getOptionLabel={(option) => option.nome_completo || ''}
@@ -193,6 +191,18 @@ export default function ApontamentosInjetoraInicial() {
                                 onChange={handleAutocompleteChange('funcionario')}
                                 isOptionEqualToValue={(option, value) => option.nome_completo === value.nome_completo}
                                 fullWidth
+                                sx={{
+                                    '& .MuiInputBase-root': {
+                                        height: 70,
+                                        fontSize: '1.2rem',
+                                    },
+                                    '& .MuiAutocomplete-input': {
+                                        fontSize: '1.2rem',
+                                    },
+                                    '& .MuiOutlinedInput-root': {
+                                        paddingRight: '40px',
+                                    },
+                                }}
                                 renderInput={(params) => (
                                     <TextField {...params} label="Funcionário" required size="medium" fullWidth />
                                 )}
@@ -200,7 +210,7 @@ export default function ApontamentosInjetoraInicial() {
                             />
                         </Grid>
 
-                        <Grid item xs={12} sm={12} md={12}>
+                        <Grid item xs={12}>
                             <Autocomplete
                                 options={pecas}
                                 getOptionLabel={(option) => `${option.descricao_peca} (${option.codigo_peca})` || ''}
@@ -208,6 +218,18 @@ export default function ApontamentosInjetoraInicial() {
                                 onChange={handleAutocompleteChange('peca')}
                                 isOptionEqualToValue={(option, value) => option.codigo_peca === value.codigo_peca}
                                 fullWidth
+                                sx={{
+                                    '& .MuiInputBase-root': {
+                                        height: 70,
+                                        fontSize: '1.2rem',
+                                    },
+                                    '& .MuiAutocomplete-input': {
+                                        fontSize: '1.2rem',
+                                    },
+                                    '& .MuiOutlinedInput-root': {
+                                        paddingRight: '40px',
+                                    },
+                                }}
                                 renderInput={(params) => (
                                     <TextField {...params} label="Peça" required size="medium" fullWidth />
                                 )}
