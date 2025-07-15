@@ -107,7 +107,7 @@ export default function ApontamentosInjetoraHoraria() {
             const existingApontamentos = response;
             const updatedEntries = entries.map(entry => {
                 const existing = existingApontamentos.find(
-                    ap => ap.hora_apontamento === entry.hora
+                    ap => moment(ap.hora_apontamento, 'HH:mm:ss').format('HH:mm') === entry.hora
                 );
                 if (existing) {
                     return {
@@ -118,7 +118,7 @@ export default function ApontamentosInjetoraHoraria() {
                         tipo_registro: existing.tipo_registro,
                         finalizado: true,
                         id: existing.id,
-                        quantidade_efetiva: existing.quantidade_efetiva, 
+                        quantidade_efetiva: existing.quantidade_efetiva,
                     };
                 }
                 return entry;
@@ -188,7 +188,7 @@ export default function ApontamentosInjetoraHoraria() {
             const updatedApontamentos = [...apontamentosHorarios];
             updatedApontamentos[index].finalizado = true;
             updatedApontamentos[index].id = response.data.id;
-            updatedApontamentos[index].quantidade_efetiva = response.data.quantidade_efetiva; 
+            updatedApontamentos[index].quantidade_efetiva = response.data.quantidade_efetiva;
             setApontamentosHorarios(updatedApontamentos);
 
             if (index < apontamentosHorarios.length - 1) {
@@ -306,7 +306,7 @@ export default function ApontamentosInjetoraHoraria() {
                         updatedApontamentos[i].pecas_nc = currentPayload.pecas_nc;
                         updatedApontamentos[i].observacoes = currentPayload.observacoes;
                         updatedApontamentos[i].tipo_registro = currentPayload.tipo_registro;
-                        updatedApontamentos[i].quantidade_efetiva = response.data.quantidade_efetiva; // Update quantidade_efetiva
+                        updatedApontamentos[i].quantidade_efetiva = response.data.quantidade_efetiva;
                         setApontamentosHorarios([...updatedApontamentos]);
                     } catch (err) {
                         console.error(err);
@@ -352,7 +352,7 @@ export default function ApontamentosInjetoraHoraria() {
     };
 
     const handleImprodutividadeSuccess = async () => {
-        await initializeApontamentos(initialData); 
+        await initializeApontamentos(initialData);
     };
 
     if (error && !initialData) {
@@ -597,7 +597,7 @@ export default function ApontamentosInjetoraHoraria() {
                 open={isImprodutividadeModalOpen}
                 onClose={handleCloseImprodutividadeModal}
                 dataApontamento={initialData?.dataApontamento}
-                apontamentosHorarios={apontamentosHorarios}
+                turno={initialData?.turno}
                 onSuccess={handleImprodutividadeSuccess}
             />
         </Box>

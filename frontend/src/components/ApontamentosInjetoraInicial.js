@@ -53,7 +53,14 @@ export default function ApontamentosInjetoraInicial() {
         e.preventDefault();
         setError('');
 
-        if (Object.values(formData).some(val => !val)) {
+        const isFormValid = Object.entries(formData).every(([key, value]) => {
+            if (key === 'funcionario' || key === 'peca') {
+                return value !== null;
+            }
+            return value !== '' && value !== null && value !== undefined;
+        });
+
+        if (!isFormValid) {
             setError('Por favor, preencha todos os campos obrigatórios.');
             return;
         }
@@ -85,15 +92,24 @@ export default function ApontamentosInjetoraInicial() {
 
                 <Box component="form" onSubmit={handleSubmit}>
                     <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6}>
-                            <FormControl fullWidth required>
-                                <InputLabel>Tipo de Injetora</InputLabel>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <FormControl fullWidth required size="medium">
+                                <InputLabel id="tipo-injetora-label" shrink>
+                                    Tipo de Injetora
+                                </InputLabel>
                                 <Select
+                                    labelId="tipo-injetora-label"
                                     name="tipoInjetora"
                                     value={formData.tipoInjetora}
-                                    label="Tipo de Injetora"
                                     onChange={handleChange}
+                                    displayEmpty
+                                    label="Tipo de Injetora"
+                                    renderValue={(selected) => {
+                                        if (!selected) return <em>Selecione</em>;
+                                        return selected + 'T';
+                                    }}
                                 >
+                                    <MenuItem value=""><em>Selecione</em></MenuItem>
                                     <MenuItem value="200">200T</MenuItem>
                                     <MenuItem value="250">250T</MenuItem>
                                     <MenuItem value="300">300T</MenuItem>
@@ -101,16 +117,26 @@ export default function ApontamentosInjetoraInicial() {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <FormControl fullWidth required>
-                                <InputLabel>Máquina</InputLabel>
+
+                        <Grid item xs={12} sm={6} md={4}>
+                            <FormControl fullWidth required size="medium">
+                                <InputLabel id="maquina-label" shrink>
+                                    Máquina
+                                </InputLabel>
                                 <Select
+                                    labelId="maquina-label"
                                     name="maquina"
                                     value={formData.maquina}
-                                    label="Máquina"
                                     onChange={handleChange}
                                     disabled={!formData.tipoInjetora || loading}
+                                    displayEmpty
+                                    label="Máquina"
+                                    renderValue={(selected) => {
+                                        if (!selected) return <em>Selecione</em>;
+                                        return selected;
+                                    }}
                                 >
+                                    <MenuItem value=""><em>Selecione</em></MenuItem>
                                     {maquinasFiltradas.map((maq) => (
                                         <MenuItem key={maq.nome_maquina} value={maq.nome_maquina}>
                                             {maq.nome_maquina}
@@ -119,22 +145,35 @@ export default function ApontamentosInjetoraInicial() {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <FormControl fullWidth required>
-                                <InputLabel>Turno</InputLabel>
+
+                        <Grid item xs={12} sm={6} md={4}>
+                            <FormControl fullWidth required size="medium">
+                                <InputLabel id="turno-label" shrink>
+                                    Turno
+                                </InputLabel>
                                 <Select
+                                    labelId="turno-label"
                                     name="turno"
                                     value={formData.turno}
-                                    label="Turno"
                                     onChange={handleChange}
+                                    displayEmpty
+                                    label="Turno"
+                                    renderValue={(selected) => {
+                                        if (!selected) return <em>Selecione</em>;
+                                        return selected === 'Manha'
+                                            ? 'Manhã (07:00 - 18:00)'
+                                            : 'Noite (18:00 - 07:00)';
+                                    }}
                                 >
+                                    <MenuItem value=""><em>Selecione</em></MenuItem>
                                     <MenuItem value="Manha">Manhã (07:00 - 18:00)</MenuItem>
                                     <MenuItem value="Noite">Noite (18:00 - 07:00)</MenuItem>
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
-                           <TextField
+
+                        <Grid item xs={12} sm={6} md={4}>
+                            <TextField
                                 label="Data do Apontamento"
                                 type="date"
                                 name="dataApontamento"
@@ -142,30 +181,37 @@ export default function ApontamentosInjetoraInicial() {
                                 onChange={handleChange}
                                 fullWidth
                                 required
+                                InputLabelProps={{ shrink: true }}
+                                size="medium"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+
+                        <Grid item xs={12} sm={6} md={4}>
                             <Autocomplete
                                 options={funcionarios}
                                 getOptionLabel={(option) => option.nome_completo || ''}
                                 value={formData.funcionario}
                                 onChange={handleAutocompleteChange('funcionario')}
                                 isOptionEqualToValue={(option, value) => option.nome_completo === value.nome_completo}
-                                renderInput={(params) => <TextField {...params} label="Funcionário" required />}
+                                renderInput={(params) => <TextField {...params} label="Funcionário" required size="medium" />}
                                 noOptionsText={loading ? "Carregando..." : "Nenhum funcionário encontrado"}
+                                fullWidth
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
-                           <Autocomplete
+
+                        <Grid item xs={12} sm={6} md={4}>
+                            <Autocomplete
                                 options={pecas}
                                 getOptionLabel={(option) => `${option.descricao_peca} (${option.codigo_peca})` || ''}
                                 value={formData.peca}
                                 onChange={handleAutocompleteChange('peca')}
                                 isOptionEqualToValue={(option, value) => option.codigo_peca === value.codigo_peca}
-                                renderInput={(params) => <TextField {...params} label="Peça" required />}
+                                renderInput={(params) => <TextField {...params} label="Peça" required size="medium" />}
                                 noOptionsText={loading ? "Carregando..." : "Nenhuma peça encontrada"}
+                                fullWidth
                             />
                         </Grid>
+
                         <Grid item xs={12}>
                             <Button
                                 variant="contained"
