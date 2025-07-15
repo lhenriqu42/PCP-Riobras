@@ -31,7 +31,6 @@ export default function ApontamentosInjetoraInicial() {
                 setFuncionarios(response.data.funcionarios || []);
                 setPecas(response.data.pecas || []);
             } catch (err) {
-                console.error('Erro ao carregar dados para os campos:', err);
                 setError('Não foi possível carregar os dados de apoio (máquinas, peças, etc).');
             } finally {
                 setLoading(false);
@@ -193,9 +192,11 @@ export default function ApontamentosInjetoraInicial() {
                                 value={formData.funcionario}
                                 onChange={handleAutocompleteChange('funcionario')}
                                 isOptionEqualToValue={(option, value) => option.nome_completo === value.nome_completo}
-                                renderInput={(params) => <TextField {...params} label="Funcionário" required size="medium" />}
-                                noOptionsText={loading ? "Carregando..." : "Nenhum funcionário encontrado"}
                                 fullWidth
+                                renderInput={(params) => (
+                                    <TextField {...params} label="Funcionário" required size="medium" fullWidth />
+                                )}
+                                noOptionsText={loading ? "Carregando..." : "Nenhum funcionário encontrado"}
                             />
                         </Grid>
 
@@ -206,9 +207,11 @@ export default function ApontamentosInjetoraInicial() {
                                 value={formData.peca}
                                 onChange={handleAutocompleteChange('peca')}
                                 isOptionEqualToValue={(option, value) => option.codigo_peca === value.codigo_peca}
-                                renderInput={(params) => <TextField {...params} label="Peça" required size="medium" />}
-                                noOptionsText={loading ? "Carregando..." : "Nenhuma peça encontrada"}
                                 fullWidth
+                                renderInput={(params) => (
+                                    <TextField {...params} label="Peça" required size="medium" fullWidth />
+                                )}
+                                noOptionsText={loading ? "Carregando..." : "Nenhuma peça encontrada"}
                             />
                         </Grid>
 
