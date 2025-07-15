@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, CircularProgress, Alert, Button, Dialog, DialogActions,
     DialogContent, DialogContentText, DialogTitle, TextField, Grid, IconButton,
-    Collapse
+    Collapse, TablePagination, Snackbar
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -11,6 +11,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever'; 
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import ApontamentoService from '../services/ApontamentoService';
@@ -27,55 +28,57 @@ export default function ApontamentosManutencao() {
 
     const [apontamentosAgrupados, setApontamentosAgrupados] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [editedApontamento, setEditedApontamento] = useState({});
-
-    const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-    const [apontamentoToDelete, setApontamentoToDelete] = useState(null);
-
+    
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(new Date());
 
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+
+    const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+    const [apontamentoToDelete, setApontamentoToDelete] = useState(null);
+    const [openGroupDeleteDialog, setOpenGroupDeleteDialog] = useState(false);
+    const [groupToDelete, setGroupToDelete] = useState(null);
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
     const [expandedGroups, setExpandedGroups] = useState({});
+    const groupRowRefs = useRef({});
 
     const fetchApontamentos = useCallback(async () => {
         setLoading(true);
-        setError('');
         try {
             const params = {};
-            if (startDate) {
-                params.dataInicio = format(startDate, 'yyyy-MM-dd');
-            }
-            if (endDate) {
-                params.dataFim = format(endDate, 'yyyy-MM-dd');
-            }
+            if (startDate) params.dataInicio = format(startDate, 'yyyy-MM-dd');
+            if (endDate) params.dataFim = format(endDate, 'yyyy-MM-dd');
+            
             const data = await ApontamentoService.getApontamentosInjetora(params);
-
-            const groupedData = data.reduce((acc, currentApontamento) => {
-                const groupKey = `${currentApontamento.data_apontamento}-${currentApontamento.funcionario}-${currentApontamento.maquina}-${currentApontamento.peca}`;
+            
+            const groupedData = data.reduce((acc, current) => {
+                const groupKey = `${current.data_apontamento}-${current.funcionario}-${current.maquina}-${current.peca}`;
                 if (!acc[groupKey]) {
                     acc[groupKey] = {
-                        data_apontamento: currentApontamento.data_apontamento,
-                        funcionario: currentApontamento.funcionario,
-                        maquina: currentApontamento.maquina,
-                        peca: currentApontamento.peca,
+                        key: groupKey,
+                        data_apontamento: current.data_apontamento,
+                        funcionario: current.funcionario,
+                        maquina: current.maquina,
+                        peca: current.peca,
                         total_quantidade_injetada: 0,
                         total_pecas_nc: 0,
                         apontamentos: []
                     };
                 }
-                acc[groupKey].total_quantidade_injetada += currentApontamento.quantidade_injetada || 0;
-                acc[groupKey].total_pecas_nc += currentApontamento.pecas_nc || 0;
-                acc[groupKey].apontamentos.push(currentApontamento);
+                acc[groupKey].total_quantidade_injetada += current.quantidade_injetada || 0;
+                acc[groupKey].total_pecas_nc += current.pecas_nc || 0;
+                acc[groupKey].apontamentos.push(current);
                 return acc;
             }, {});
 
-            setApontamentosAgrupados(Object.values(groupedData));
-
+            setApontamentosAgrupados(Object.values(groupedData).sort((a, b) => new Date(b.data_apontamento) - new Date(a.data_apontamento)));
+            setPage(0); 
         } catch (err) {
-            console.error('Erro ao buscar apontamentos:', err);
-            setError('Não foi possível carregar os apontamentos. ' + (err.response?.data?.message || err.message));
+            handleShowSnackbar('Não foi possível carregar os apontamentos.', 'error');
         } finally {
             setLoading(false);
         }
@@ -89,7 +92,18 @@ export default function ApontamentosManutencao() {
             }
             fetchApontamentos();
         }
-    }, [user, authLoading, navigate, fetchApontamentos]);
+    }, [user, authLoading, navigate]); 
+    const handleFilterSubmit = () => {
+        fetchApontamentos();
+    };
+
+    const handleShowSnackbar = (message, severity) => {
+        setSnackbar({ open: true, message, severity });
+    };
+
+    const handleCloseSnackbar = () => {
+        setSnackbar(prev => ({ ...prev, open: false }));
+    };
 
     const handleEditClick = (apontamento) => {
         setEditingId(apontamento.id);
@@ -99,8 +113,12 @@ export default function ApontamentosManutencao() {
         setEditedApontamento({ ...apontamento, hora_apontamento: horaDate });
     };
 
-    const handleSaveClick = async (id) => {
-        setError('');
+    const handleCancelClick = () => {
+        setEditingId(null);
+        setEditedApontamento({});
+    };
+    
+    const handleSaveClick = async (id, groupKey) => {
         try {
             const dataToUpdate = {
                 quantidade_injetada: editedApontamento.quantidade_injetada,
@@ -108,89 +126,127 @@ export default function ApontamentosManutencao() {
                 observacoes: editedApontamento.observacoes,
                 hora_apontamento: format(editedApontamento.hora_apontamento, 'HH:mm:ss'),
             };
-            await ApontamentoService.updateApontamentoInjetora(id, dataToUpdate);
-            await fetchApontamentos();
+            const updatedApontamento = await ApontamentoService.updateApontamentoInjetora(id, dataToUpdate);
+
+            setApontamentosAgrupados(prevGroups => prevGroups.map(group => {
+                if (group.key === groupKey) {
+                    const newApontamentos = group.apontamentos.map(apt => 
+                        apt.id === id ? { ...apt, ...updatedApontamento } : apt
+                    );
+                    const newTotalInjetada = newApontamentos.reduce((sum, apt) => sum + (apt.quantidade_injetada || 0), 0);
+                    const newTotalNC = newApontamentos.reduce((sum, apt) => sum + (apt.pecas_nc || 0), 0);
+                    return { ...group, apontamentos: newApontamentos, total_quantidade_injetada: newTotalInjetada, total_pecas_nc: newTotalNC };
+                }
+                return group;
+            }));
+            
             setEditingId(null);
             setEditedApontamento({});
+            handleShowSnackbar('Apontamento salvo com sucesso!', 'success');
         } catch (err) {
-            console.error('Erro ao salvar apontamento:', err);
-            setError('Não foi possível salvar o apontamento. ' + (err.response?.data?.message || err.message));
+            handleShowSnackbar('Erro ao salvar o apontamento.', 'error');
         }
     };
-
-    const handleCancelClick = () => {
-        setEditingId(null);
-        setEditedApontamento({});
-    };
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setEditedApontamento(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleNumericChange = (e) => {
-        const { name, value } = e.target;
-        setEditedApontamento(prev => ({ ...prev, [name]: value === '' ? '' : Number(value) }));
-    };
-
-    const handleTimeChange = (newValue) => {
-        setEditedApontamento(prev => ({ ...prev, hora_apontamento: newValue }));
-    };
-
+    
     const handleDeleteClick = (apontamento) => {
         setApontamentoToDelete(apontamento);
         setOpenDeleteDialog(true);
     };
 
-    const handleCloseDeleteDialog = () => {
-        setOpenDeleteDialog(false);
-        setApontamentoToDelete(null);
-    };
-
     const handleConfirmDelete = async () => {
-        setError('');
+        if (!apontamentoToDelete) return;
         try {
             await ApontamentoService.deleteApontamentoInjetora(apontamentoToDelete.id);
-            await fetchApontamentos();
-            handleCloseDeleteDialog();
+            
+            setApontamentosAgrupados(prevGroups => {
+                const newGroups = prevGroups.map(group => {
+                    if (group.apontamentos.some(apt => apt.id === apontamentoToDelete.id)) {
+                        const newApontamentos = group.apontamentos.filter(apt => apt.id !== apontamentoToDelete.id);
+                        if (newApontamentos.length === 0) return null; // Marcar grupo para remoção
+                        
+                        const newTotalInjetada = newApontamentos.reduce((sum, apt) => sum + (apt.quantidade_injetada || 0), 0);
+                        const newTotalNC = newApontamentos.reduce((sum, apt) => sum + (apt.pecas_nc || 0), 0);
+                        return { ...group, apontamentos: newApontamentos, total_quantidade_injetada: newTotalInjetada, total_pecas_nc: newTotalNC };
+                    }
+                    return group;
+                }).filter(Boolean);
+                return newGroups;
+            });
+
+            handleShowSnackbar('Apontamento deletado com sucesso!', 'success');
         } catch (err) {
-            console.error('Erro ao deletar apontamento:', err);
-            setError('Não foi possível deletar o apontamento. ' + (err.response?.data?.message || err.message));
+            handleShowSnackbar('Erro ao deletar o apontamento.', 'error');
+        } finally {
+            setOpenDeleteDialog(false);
+            setApontamentoToDelete(null);
         }
     };
 
-    const handleToggleGroup = (groupKey) => {
-        setExpandedGroups(prev => ({
-            ...prev,
-            [groupKey]: !prev[groupKey]
-        }));
+    const handleDeleteGroupClick = (group) => {
+        setGroupToDelete(group);
+        setOpenGroupDeleteDialog(true);
     };
 
-    if (authLoading || loading) {
+    const handleConfirmGroupDelete = async () => {
+        if (!groupToDelete) return;
+        try {
+            const idsToDelete = groupToDelete.apontamentos.map(apt => apt.id);
+            await ApontamentoService.deleteApontamentosInjetoraBatch(idsToDelete);
+
+            setApontamentosAgrupados(prev => prev.filter(g => g.key !== groupToDelete.key));
+            handleShowSnackbar('Grupo de apontamentos deletado com sucesso!', 'success');
+        } catch (err) {
+            handleShowSnackbar('Erro ao deletar o grupo de apontamentos.', 'error');
+        } finally {
+            setOpenGroupDeleteDialog(false);
+            setGroupToDelete(null);
+        }
+    };
+    
+    const handleToggleGroup = (groupKey) => {
+        setExpandedGroups(prev => ({ ...prev, [groupKey]: !prev[groupKey] }));
+    };
+
+    const handleChangePage = (event, newPage) => setPage(newPage);
+    
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
+
+    const createHandleChange = (setter) => (e) => setter(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const createHandleNumericChange = (setter) => (e) => setter(prev => ({ ...prev, [e.target.name]: e.target.value === '' ? '' : Number(e.target.value) }));
+    const createHandleTimeChange = (setter) => (newValue) => setter(prev => ({ ...prev, hora_apontamento: newValue }));
+    
+    if (authLoading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
                 <CircularProgress />
-                <Typography variant="h6" sx={{ ml: 2 }}>Carregando apontamentos...</Typography>
             </Box>
         );
     }
 
     if (!user || user.level < MIN_AUTH_LEVEL) {
-        return (
-            <Box sx={{ flexGrow: 1, p: 3 }}>
-                <Alert severity="warning">Você não tem permissão para acessar esta página.</Alert>
-            </Box>
-        );
+        return <Alert severity="warning">Você não tem permissão para acessar esta página.</Alert>;
     }
 
     return (
         <LocalizationProvider dateAdapter={AdapterDateFns} locale={ptBR}>
             <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+                <Snackbar
+                    open={snackbar.open}
+                    autoHideDuration={6000}
+                    onClose={handleCloseSnackbar}
+                    anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                >
+                    <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+                        {snackbar.message}
+                    </Alert>
+                </Snackbar>
+
                 <Typography variant="h4" gutterBottom>
                     Manutenção de Apontamentos de Injeção
                 </Typography>
-
-                {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
                 <Paper elevation={3} sx={{ p: 2, mb: 3 }}>
                     <Typography variant="h6" gutterBottom>Filtrar Apontamentos</Typography>
@@ -199,7 +255,7 @@ export default function ApontamentosManutencao() {
                             <DatePicker
                                 label="Data Início"
                                 value={startDate}
-                                onChange={(newValue) => setStartDate(newValue)}
+                                onChange={setStartDate}
                                 renderInput={(params) => <TextField {...params} fullWidth size="small" />}
                                 format="dd/MM/yyyy"
                             />
@@ -208,7 +264,7 @@ export default function ApontamentosManutencao() {
                             <DatePicker
                                 label="Data Fim"
                                 value={endDate}
-                                onChange={(newValue) => setEndDate(newValue)}
+                                onChange={setEndDate}
                                 renderInput={(params) => <TextField {...params} fullWidth size="small" />}
                                 format="dd/MM/yyyy"
                             />
@@ -216,11 +272,11 @@ export default function ApontamentosManutencao() {
                         <Grid item xs={12} sm={4} md={3}>
                             <Button
                                 variant="contained"
-                                onClick={fetchApontamentos}
+                                onClick={handleFilterSubmit}
                                 disabled={loading}
                                 fullWidth
                             >
-                                Buscar
+                                {loading ? <CircularProgress size={24} color="inherit" /> : 'Buscar'}
                             </Button>
                         </Grid>
                     </Grid>
@@ -231,167 +287,125 @@ export default function ApontamentosManutencao() {
                         <Table size="small">
                             <TableHead>
                                 <TableRow>
+                                    <TableCell sx={{width: '20px'}}/>
                                     <TableCell>Grupo (Data / Funcionário / Máquina / Produto)</TableCell>
                                     <TableCell align="right">Total Qtde. Injetada</TableCell>
                                     <TableCell align="right">Total Peças NC</TableCell>
-                                    <TableCell align="center">Expandir</TableCell>
+                                    <TableCell align="center">Ações do Grupo</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {apontamentosAgrupados.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={4} align="center">Nenhum apontamento encontrado para o período.</TableCell>
-                                    </TableRow>
+                                {loading ? (
+                                    <TableRow><TableCell colSpan={5} align="center"><CircularProgress/></TableCell></TableRow>
+                                ) : apontamentosAgrupados.length === 0 ? (
+                                    <TableRow><TableCell colSpan={5} align="center">Nenhum apontamento encontrado.</TableCell></TableRow>
                                 ) : (
-                                    apontamentosAgrupados.map((group) => (
-                                        <React.Fragment key={`${group.data_apontamento}-${group.funcionario}-${group.maquina}-${group.peca}`}>
-                                            <TableRow sx={{ '& > *': { borderBottom: 'unset' }, backgroundColor: '#f5f5f5' }}>
-                                                <TableCell component="th" scope="row">
-                                                    {new Date(group.data_apontamento).toLocaleDateString('pt-BR')} - {group.funcionario} - {group.maquina} - {group.peca}
-                                                </TableCell>
-                                                <TableCell align="right">{group.total_quantidade_injetada}</TableCell>
-                                                <TableCell align="right">{group.total_pecas_nc}</TableCell>
-                                                <TableCell align="center">
-                                                    <IconButton
-                                                        aria-label="expand row"
-                                                        size="small"
-                                                        onClick={() => handleToggleGroup(`${group.data_apontamento}-${group.funcionario}-${group.maquina}-${group.peca}`)}
-                                                    >
-                                                        {expandedGroups[`${group.data_apontamento}-${group.funcionario}-${group.maquina}-${group.peca}`] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                                                    </IconButton>
-                                                </TableCell>
-                                            </TableRow>
-                                            <TableRow>
-                                                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
-                                                    <Collapse in={expandedGroups[`${group.data_apontamento}-${group.funcionario}-${group.maquina}-${group.peca}`]} timeout="auto" unmountOnExit>
-                                                        <Box sx={{ margin: 1 }}>
-                                                            <Typography variant="h6" gutterBottom component="div">
-                                                                Detalhes dos Apontamentos
-                                                            </Typography>
-                                                            <Table size="small" aria-label="apontamentos-detalhes">
-                                                                <TableHead>
-                                                                    <TableRow>
-                                                                        <TableCell>Hora</TableCell>
-                                                                        <TableCell align="right">Qtde. Injetada</TableCell>
-                                                                        <TableCell align="right">Peças NC</TableCell>
-                                                                        <TableCell>Observações</TableCell>
-                                                                        <TableCell align="center">Ações</TableCell>
-                                                                    </TableRow>
-                                                                </TableHead>
-                                                                <TableBody>
-                                                                    {group.apontamentos.map((apontamento) => (
-                                                                        <TableRow key={apontamento.id}>
-                                                                            <TableCell>
-                                                                                {editingId === apontamento.id ? (
-                                                                                    <TimePicker
-                                                                                        label="Hora"
-                                                                                        value={editedApontamento.hora_apontamento}
-                                                                                        onChange={handleTimeChange}
-                                                                                        renderInput={(params) => <TextField {...params} fullWidth size="small" sx={{ width: 100 }} />}
-                                                                                        format="HH:mm"
-                                                                                    />
-                                                                                ) : (
-                                                                                    apontamento.hora_apontamento
-                                                                                )}
-                                                                            </TableCell>
-                                                                            <TableCell align="right">
-                                                                                {editingId === apontamento.id ? (
-                                                                                    <TextField
-                                                                                        name="quantidade_injetada"
-                                                                                        value={editedApontamento.quantidade_injetada}
-                                                                                        onChange={handleNumericChange}
-                                                                                        type="number"
-                                                                                        size="small"
-                                                                                        sx={{ width: 80 }}
-                                                                                    />
-                                                                                ) : (
-                                                                                    apontamento.quantidade_injetada
-                                                                                )}
-                                                                            </TableCell>
-                                                                            <TableCell align="right">
-                                                                                {editingId === apontamento.id ? (
-                                                                                    <TextField
-                                                                                        name="pecas_nc"
-                                                                                        value={editedApontamento.pecas_nc}
-                                                                                        onChange={handleNumericChange}
-                                                                                        type="number"
-                                                                                        size="small"
-                                                                                        sx={{ width: 80 }}
-                                                                                    />
-                                                                                ) : (
-                                                                                    apontamento.pecas_nc
-                                                                                )}
-                                                                            </TableCell>
-                                                                            <TableCell>
-                                                                                {editingId === apontamento.id ? (
-                                                                                    <TextField
-                                                                                        name="observacoes"
-                                                                                        value={editedApontamento.observacoes}
-                                                                                        onChange={handleChange}
-                                                                                        size="small"
-                                                                                        multiline
-                                                                                        rows={1}
-                                                                                        sx={{ minWidth: 150 }}
-                                                                                    />
-                                                                                ) : (
-                                                                                    apontamento.observacoes || '-'
-                                                                                )}
-                                                                            </TableCell>
-                                                                            <TableCell align="center">
-                                                                                {editingId === apontamento.id ? (
-                                                                                    <>
-                                                                                        <IconButton color="primary" onClick={() => handleSaveClick(apontamento.id)} aria-label="Salvar">
-                                                                                            <SaveIcon />
-                                                                                        </IconButton>
-                                                                                        <IconButton color="secondary" onClick={handleCancelClick} aria-label="Cancelar">
-                                                                                            <CancelIcon />
-                                                                                        </IconButton>
-                                                                                    </>
-                                                                                ) : (
-                                                                                    <>
-                                                                                        <IconButton color="info" onClick={() => handleEditClick(apontamento)} aria-label="Editar">
-                                                                                            <EditIcon />
-                                                                                        </IconButton>
-                                                                                        <IconButton color="error" onClick={() => handleDeleteClick(apontamento)} aria-label="Deletar">
-                                                                                            <DeleteIcon />
-                                                                                        </IconButton>
-                                                                                    </>
-                                                                                )}
-                                                                            </TableCell>
+                                    apontamentosAgrupados
+                                        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                                        .map((group) => (
+                                            <React.Fragment key={group.key}>
+                                                <TableRow sx={{ '& > *': { borderBottom: 'unset' }, backgroundColor: '#f5f5f5' }}>
+                                                    <TableCell>
+                                                        <IconButton aria-label="expand row" size="small" onClick={() => handleToggleGroup(group.key)}>
+                                                            {expandedGroups[group.key] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                                        </IconButton>
+                                                    </TableCell>
+                                                    <TableCell component="th" scope="row">
+                                                        {format(new Date(group.data_apontamento), 'dd/MM/yyyy')} - {group.funcionario} - {group.maquina} - {group.peca}
+                                                    </TableCell>
+                                                    <TableCell align="right">{group.total_quantidade_injetada}</TableCell>
+                                                    <TableCell align="right">{group.total_pecas_nc}</TableCell>
+                                                    <TableCell align="center">
+                                                        <IconButton color="error" onClick={() => handleDeleteGroupClick(group)} aria-label="Deletar Grupo">
+                                                            <DeleteForeverIcon />
+                                                        </IconButton>
+                                                    </TableCell>
+                                                </TableRow>
+                                                <TableRow>
+                                                    <TableCell style={{ padding: 0 }} colSpan={5}>
+                                                        <Collapse in={expandedGroups[group.key]} timeout="auto" unmountOnExit>
+                                                            <Box sx={{ margin: 1 }}>
+                                                                <Typography variant="h6" gutterBottom component="div">Detalhes</Typography>
+                                                                <Table size="small">
+                                                                    <TableHead>
+                                                                        <TableRow>
+                                                                            <TableCell>Hora</TableCell>
+                                                                            <TableCell align="right">Qtde. Injetada</TableCell>
+                                                                            <TableCell align="right">Peças NC</TableCell>
+                                                                            <TableCell>Observações</TableCell>
+                                                                            <TableCell align="center">Ações</TableCell>
                                                                         </TableRow>
-                                                                    ))}
-                                                                </TableBody>
-                                                            </Table>
-                                                        </Box>
-                                                    </Collapse>
-                                                </TableCell>
-                                            </TableRow>
-                                        </React.Fragment>
-                                    ))
+                                                                    </TableHead>
+                                                                    <TableBody>
+                                                                        {group.apontamentos.map((ap) => (
+                                                                            <TableRow key={ap.id}>
+                                                                                <TableCell>
+                                                                                    {editingId === ap.id ? <TimePicker label="Hora" value={editedApontamento.hora_apontamento} onChange={createHandleTimeChange(setEditedApontamento)} renderInput={(params) => <TextField {...params} size="small" sx={{ width: 120 }} />} format="HH:mm" /> : ap.hora_apontamento}
+                                                                                </TableCell>
+                                                                                <TableCell align="right">
+                                                                                    {editingId === ap.id ? <TextField name="quantidade_injetada" value={editedApontamento.quantidade_injetada} onChange={createHandleNumericChange(setEditedApontamento)} type="number" size="small" sx={{ width: 80 }} /> : ap.quantidade_injetada}
+                                                                                </TableCell>
+                                                                                <TableCell align="right">
+                                                                                    {editingId === ap.id ? <TextField name="pecas_nc" value={editedApontamento.pecas_nc} onChange={createHandleNumericChange(setEditedApontamento)} type="number" size="small" sx={{ width: 80 }} /> : ap.pecas_nc}
+                                                                                </TableCell>
+                                                                                <TableCell>
+                                                                                    {editingId === ap.id ? <TextField name="observacoes" value={editedApontamento.observacoes} onChange={createHandleChange(setEditedApontamento)} size="small" sx={{ minWidth: 150 }} multiline rows={1} /> : (ap.observacoes || '-')}
+                                                                                </TableCell>
+                                                                                <TableCell align="center">
+                                                                                    {editingId === ap.id ? (
+                                                                                        <>
+                                                                                            <IconButton color="primary" onClick={() => handleSaveClick(ap.id, group.key)}><SaveIcon /></IconButton>
+                                                                                            <IconButton color="secondary" onClick={handleCancelClick}><CancelIcon /></IconButton>
+                                                                                        </>
+                                                                                    ) : (
+                                                                                        <>
+                                                                                            <IconButton color="info" onClick={() => handleEditClick(ap)}><EditIcon /></IconButton>
+                                                                                            <IconButton color="error" onClick={() => handleDeleteClick(ap)}><DeleteIcon /></IconButton>
+                                                                                        </>
+                                                                                    )}
+                                                                                </TableCell>
+                                                                            </TableRow>
+                                                                        ))}
+                                                                    </TableBody>
+                                                                </Table>
+                                                            </Box>
+                                                        </Collapse>
+                                                    </TableCell>
+                                                </TableRow>
+                                            </React.Fragment>
+                                        ))
                                 )}
                             </TableBody>
                         </Table>
                     </TableContainer>
+                    <TablePagination
+                        rowsPerPageOptions={[5, 10, 25]}
+                        component="div"
+                        count={apontamentosAgrupados.length}
+                        rowsPerPage={rowsPerPage}
+                        page={page}
+                        onPageChange={handleChangePage}
+                        onRowsPerPageChange={handleChangeRowsPerPage}
+                        labelRowsPerPage="Itens por página:"
+                        labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+                    />
                 </Paper>
 
-                <Dialog
-                    open={openDeleteDialog}
-                    onClose={handleCloseDeleteDialog}
-                    aria-labelledby="alert-dialog-title"
-                    aria-describedby="alert-dialog-description"
-                >
-                    <DialogTitle id="alert-dialog-title">{"Confirmar Exclusão"}</DialogTitle>
-                    <DialogContent>
-                        <DialogContentText id="alert-dialog-description">
-                            Tem certeza que deseja excluir o apontamento de {apontamentoToDelete?.funcionario} para o produto {apontamentoToDelete?.peca} ({apontamentoToDelete?.quantidade_injetada} injetadas, {apontamentoToDelete?.pecas_nc} NC) na data {apontamentoToDelete?.data_apontamento ? new Date(apontamentoToDelete.data_apontamento).toLocaleDateString('pt-BR') : ''} às {apontamentoToDelete?.hora_apontamento}?
-                            Esta ação não pode ser desfeita.
-                        </DialogContentText>
-                    </DialogContent>
+                {}
+                <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+                    <DialogTitle>Confirmar Exclusão</DialogTitle>
+                    <DialogContent><DialogContentText>Tem certeza que deseja excluir este apontamento individual? A ação não pode ser desfeita.</DialogContentText></DialogContent>
                     <DialogActions>
-                        <Button onClick={handleCloseDeleteDialog}>Cancelar</Button>
-                        <Button onClick={handleConfirmDelete} color="error" autoFocus>
-                            Excluir
-                        </Button>
+                        <Button onClick={() => setOpenDeleteDialog(false)}>Cancelar</Button>
+                        <Button onClick={handleConfirmDelete} color="error">Excluir</Button>
+                    </DialogActions>
+                </Dialog>
+                <Dialog open={openGroupDeleteDialog} onClose={() => setOpenGroupDeleteDialog(false)}>
+                    <DialogTitle>Confirmar Exclusão do Grupo</DialogTitle>
+                    <DialogContent><DialogContentText>Tem certeza que deseja excluir **TODOS** os apontamentos deste grupo? A ação não pode ser desfeita.</DialogContentText></DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setOpenGroupDeleteDialog(false)}>Cancelar</Button>
+                        <Button onClick={handleConfirmGroupDelete} color="error">Excluir Grupo</Button>
                     </DialogActions>
                 </Dialog>
             </Box>
