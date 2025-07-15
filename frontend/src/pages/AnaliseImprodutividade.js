@@ -193,7 +193,8 @@ export default function AnaliseImprodutividade() {
                             />
                         </Grid>
                         <Grid item xs={12} sm={6} md={3}>
-                            <FormControl fullWidth>
+                            {}
+                            <FormControl fullWidth sx={{ minWidth: 120 }}>
                                 <InputLabel id="setor-filter-label">Setor</InputLabel>
                                 <Select
                                     labelId="setor-filter-label"
