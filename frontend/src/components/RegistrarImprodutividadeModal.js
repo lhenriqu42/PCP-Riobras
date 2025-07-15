@@ -24,7 +24,6 @@ const style = {
 export default function RegistrarImprodutividadeModal({ open, onClose, dataApontamento, turno, apontamentoId, onSuccess }) {
     const [setores, setSetores] = useState([]);
     const [selectedSetorId, setSelectedSetorId] = useState('');
-    const [producaoSetorId, setProducaoSetorId] = useState('');
     const [selectedHoraApontamento, setSelectedHoraApontamento] = useState('');
     const [pecasRegistrar, setPecasRegistrar] = useState('');
     const [causa, setCausa] = useState('');
@@ -72,12 +71,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
             const response = await axios.get(`${REACT_APP_API_URL}/api/setores`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            const fetchedSetores = response.data;
-            setSetores(fetchedSetores);
-            const producao = fetchedSetores.find(setor => setor.nome_setor.toLowerCase() === 'produção');
-            if (producao) {
-                setProducaoSetorId(producao.id);
-            }
+            setSetores(response.data);
         } catch (err) {
             setError('Erro ao carregar setores.');
         } finally {
@@ -105,19 +99,13 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
         }
         
         const payload = {
-            setor_id: selectedSetorId || producaoSetorId,
+            setor_id: selectedSetorId,
             data_improdutividade: dataApontamento,
             hora_improdutividade: selectedHoraApontamento,
             causa: causa,
             pecas_transferidas: numPecasRegistrar,
             apontamento_injetora_id: apontamentoId,
         };
-        
-        if(!payload.setor_id) {
-            setError('O setor "Produção" não foi encontrado como padrão. Selecione um setor responsável.');
-            setLoading(false);
-            return;
-        }
 
         try {
             const token = localStorage.getItem('token');
@@ -197,7 +185,7 @@ export default function RegistrarImprodutividadeModal({ open, onClose, dataApont
                                     <MenuItem key={setor.id} value={setor.id}>{setor.nome_setor}</MenuItem>
                                 ))}
                             </Select>
-                             <FormHelperText>Selecione o setor que causou a perda.</FormHelperText>
+                                <FormHelperText>Selecione o setor que causou a perda.</FormHelperText>
                         </FormControl>
                     </Grid>
                     <Grid item xs={12}>
