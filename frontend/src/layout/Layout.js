@@ -18,43 +18,24 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
         display: 'flex',
         flexDirection: 'column',
         padding: theme.spacing(3),
-<<<<<<< HEAD
-        width: '100%',
-        marginLeft: 0,
-        minHeight: '100vh',
-        backgroundColor: '#f4f6f8',
-        transition: theme.transitions.create(['margin', 'width'], {
-=======
         marginLeft: 0,
         minHeight: '100vh',
         transition: theme.transitions.create('margin', {
->>>>>>> 4b6d8c4769e58ba67e1d15a7bb4576fd8f087cf2
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
         }),
         ...(open && {
             marginLeft: `${drawerWidth}px`,
-<<<<<<< HEAD
-            width: `calc(100% - ${drawerWidth}px)`,
-            transition: theme.transitions.create(['margin', 'width'], {
-=======
             transition: theme.transitions.create('margin', {
->>>>>>> 4b6d8c4769e58ba67e1d15a7bb4576fd8f087cf2
                 easing: theme.transitions.easing.easeOut,
                 duration: theme.transitions.duration.enteringScreen,
             }),
         }),
         [theme.breakpoints.down('sm')]: {
             marginLeft: 0,
-<<<<<<< HEAD
-            width: '100%',
-            padding: theme.spacing(2),
-        },
-=======
             padding: theme.spacing(2),
         },
         backgroundColor: '#f4f6f8',
->>>>>>> 4b6d8c4769e58ba67e1d15a7bb4576fd8f087cf2
     })
 );
 
@@ -91,7 +72,6 @@ export default function Layout() {
     const navigate = useNavigate();
     const { logout, user } = useAuth();
     const theme = useTheme();
-
     const [open, setOpen] = useState(true);
 
     const handleDrawerToggle = () => {
@@ -155,9 +135,7 @@ export default function Layout() {
 
             <Main open={open}>
                 <Toolbar />
-                <Box sx={{ width: '100%' }}>
-                    <Outlet />
-                </Box>
+                <Outlet />
             </Main>
         </Box>
     );
