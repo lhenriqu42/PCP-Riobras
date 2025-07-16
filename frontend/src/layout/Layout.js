@@ -18,7 +18,6 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
         display: 'flex',
         flexDirection: 'column',
         padding: theme.spacing(3),
-        marginLeft: 0,
         minHeight: '100vh',
         transition: theme.transitions.create('margin', {
             easing: theme.transitions.easing.sharp,
@@ -112,7 +111,6 @@ export default function Layout() {
 
             <Drawer
                 sx={{
-                    width: drawerWidth,
                     flexShrink: 0,
                     '& .MuiDrawer-paper': {
                         width: drawerWidth,

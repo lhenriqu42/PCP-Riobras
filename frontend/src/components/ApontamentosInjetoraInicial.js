@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Box, Typography, TextField, Button, Grid, MenuItem, FormControl,
+    Box, Typography, TextField, Button, MenuItem, FormControl,
     InputLabel, Select, Alert, Autocomplete, Paper
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
@@ -88,8 +88,8 @@ export default function ApontamentosInjetoraInicial() {
                 {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
                 <Box component="form" onSubmit={handleSubmit}>
-                    <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6} md={4}>
+                    <Box display={'flex'} gap={2}>
+                        <Box minWidth={150}>
                             <FormControl fullWidth required size="medium">
                                 <InputLabel id="tipo-injetora-label" shrink>
                                     Tipo de Injetora
@@ -113,9 +113,9 @@ export default function ApontamentosInjetoraInicial() {
                                     <MenuItem value="450">450T</MenuItem>
                                 </Select>
                             </FormControl>
-                        </Grid>
+                        </Box>
 
-                        <Grid item xs={12} sm={6} md={4}>
+                        <Box >
                             <FormControl fullWidth required size="medium">
                                 <InputLabel id="maquina-label" shrink>
                                     Máquina
@@ -141,9 +141,9 @@ export default function ApontamentosInjetoraInicial() {
                                     ))}
                                 </Select>
                             </FormControl>
-                        </Grid>
+                        </Box>
 
-                        <Grid item xs={12} sm={6} md={4}>
+                        <Box minWidth={250}>
                             <FormControl fullWidth required size="medium">
                                 <InputLabel id="turno-label" shrink>
                                     Turno
@@ -167,9 +167,9 @@ export default function ApontamentosInjetoraInicial() {
                                     <MenuItem value="Noite">Noite (18:00 - 07:00)</MenuItem>
                                 </Select>
                             </FormControl>
-                        </Grid>
+                        </Box>
 
-                        <Grid item xs={12} sm={6} md={4}>
+                        <Box >
                             <TextField
                                 label="Data do Apontamento"
                                 type="date"
@@ -181,9 +181,17 @@ export default function ApontamentosInjetoraInicial() {
                                 InputLabelProps={{ shrink: true }}
                                 size="medium"
                             />
-                        </Grid>
+                        </Box>
 
-                        <Grid item xs={12}>
+                        <Button
+                            variant="contained"
+                            type="submit"
+                            size="large"
+                        >
+                            Iniciar Apontamentos por Hora
+                        </Button>
+                    </Box>
+                    <Box mt={3} display="flex" flexDirection="column" gap={2}>
                             <Autocomplete
                                 options={funcionarios}
                                 getOptionLabel={(option) => option.nome_completo || ''}
@@ -191,26 +199,12 @@ export default function ApontamentosInjetoraInicial() {
                                 onChange={handleAutocompleteChange('funcionario')}
                                 isOptionEqualToValue={(option, value) => option.nome_completo === value.nome_completo}
                                 fullWidth
-                                sx={{
-                                    '& .MuiInputBase-root': {
-                                        height: 70,
-                                        fontSize: '1.2rem',
-                                    },
-                                    '& .MuiAutocomplete-input': {
-                                        fontSize: '1.2rem',
-                                    },
-                                    '& .MuiOutlinedInput-root': {
-                                        paddingRight: '40px',
-                                    },
-                                }}
                                 renderInput={(params) => (
                                     <TextField {...params} label="Funcionário" required size="medium" fullWidth />
                                 )}
                                 noOptionsText={loading ? "Carregando..." : "Nenhum funcionário encontrado"}
                             />
-                        </Grid>
 
-                        <Grid item xs={12}>
                             <Autocomplete
                                 options={pecas}
                                 getOptionLabel={(option) => `${option.descricao_peca} (${option.codigo_peca})` || ''}
@@ -218,36 +212,12 @@ export default function ApontamentosInjetoraInicial() {
                                 onChange={handleAutocompleteChange('peca')}
                                 isOptionEqualToValue={(option, value) => option.codigo_peca === value.codigo_peca}
                                 fullWidth
-                                sx={{
-                                    '& .MuiInputBase-root': {
-                                        height: 70,
-                                        fontSize: '1.2rem',
-                                    },
-                                    '& .MuiAutocomplete-input': {
-                                        fontSize: '1.2rem',
-                                    },
-                                    '& .MuiOutlinedInput-root': {
-                                        paddingRight: '40px',
-                                    },
-                                }}
                                 renderInput={(params) => (
                                     <TextField {...params} label="Peça" required size="medium" fullWidth />
                                 )}
                                 noOptionsText={loading ? "Carregando..." : "Nenhuma peça encontrada"}
                             />
-                        </Grid>
-
-                        <Grid item xs={12}>
-                            <Button
-                                variant="contained"
-                                type="submit"
-                                size="large"
-                                fullWidth
-                            >
-                                Iniciar Apontamentos por Hora
-                            </Button>
-                        </Grid>
-                    </Grid>
+                        </Box>
                 </Box>
             </Box>
         </Paper>

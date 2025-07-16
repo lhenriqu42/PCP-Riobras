@@ -45,10 +45,8 @@ function App() {
       <AuthProvider>
         <Router>
           <Routes>
-            {}
             <Route path="/Login" element={<Login />} />
 
-            {}
             <Route
               path="/"
               element={
@@ -57,10 +55,10 @@ function App() {
                 </PrivateRoute>
               }
             >
-              {}
+
               <Route index element={<Navigate to="/dashboard/injetora" replace />} />
 
-              {}
+
               <Route path="dashboard/injetora" element={<DashboardInjetora />} />
               <Route
                 path="dashboard/qualidade"
@@ -79,7 +77,7 @@ function App() {
                 }
               />
 
-              {}
+
               <Route
                 path="apontamentos/manutencao"
                 element={
@@ -91,10 +89,10 @@ function App() {
               <Route path="apontamentos/injetora/inicial" element={<ApontamentosInjetoraInicial />} />
               <Route path="apontamentos/injetora/horaria" element={<ApontamentosInjetoraHoraria />} />
 
-              {}
+
               <Route path="home" element={<HomePage />} />
 
-              {}
+
               <Route path="*" element={<Navigate to="/dashboard/injetora" replace />} />
             </Route>
 

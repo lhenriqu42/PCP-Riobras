@@ -11,7 +11,8 @@ import {
     MenuItem,
     Alert,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Collapse, IconButton,
-    Autocomplete
+    Autocomplete,
+    Divider
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -202,6 +203,34 @@ export default function DashboardInjetora() {
         setAggregatedData(sortedTableData);
     }, []);
 
+    const fetchAndProcessApontamentos = useCallback(async (currentMetaValue) => {
+        setError('');
+        setLoadingFilters(true);
+        try {
+            const params = {
+                dataInicio: startDate ? startDate.format('YYYY-MM-DD') : '',
+                dataFim: endDate ? endDate.format('YYYY-MM-DD') : '',
+                peca: selectedPeca ? selectedPeca.codigo_peca : null,
+                tipoInjetora: selectedTipoInjetora === 'todos' ? null : selectedTipoInjetora,
+                turno: selectedTurno === 'todos' ? null : selectedTurno,
+            };
+            const response = await axios.get(`${REACT_APP_API_URL}/api/apontamentos/injetora`, { params });
+            setApontamentos(response.data);
+            processApontamentosForDashboard(response.data, currentMetaValue);
+        } catch (err) {
+            console.error('Erro ao buscar apontamentos filtrados:', err);
+            setError('Erro ao buscar dados para o relatório.');
+        } finally {
+            setLoadingFilters(false);
+        }
+    }, [startDate, endDate, selectedPeca, selectedTipoInjetora, selectedTurno, processApontamentosForDashboard]);
+
+    useEffect(() => {
+        if (!loadingFilters && metaProducao !== 0) {
+            fetchAndProcessApontamentos(metaProducao);
+        }
+    }, [startDate, endDate, selectedPeca, selectedTipoInjetora, selectedTurno, metaProducao, fetchAndProcessApontamentos]);
+
     useEffect(() => {
         const loadInitialData = async () => {
             try {
@@ -300,26 +329,8 @@ export default function DashboardInjetora() {
                     <Typography variant="h6" gutterBottom>
                         Filtros
                     </Typography>
-                    <Grid container spacing={2} alignItems="center">
-                        <Grid item xs={12} sm={3}>
-                            <DatePicker
-                                label="Data Início"
-                                value={startDate}
-                                onChange={(newValue) => setStartDate(newValue)}
-                                renderInput={(params) => <TextField {...params} fullWidth />}
-                                format="DD/MM/YYYY"
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={3}>
-                            <DatePicker
-                                label="Data Fim"
-                                value={endDate}
-                                onChange={(newValue) => setEndDate(newValue)}
-                                renderInput={(params) => <TextField {...params} fullWidth />}
-                                format="DD/MM/YYYY"
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={2}>
+                    <Box display={'flex'} gap={2} flexDirection={'column'}>
+                        <Box >
                             <Autocomplete
                                 id="peca-autocomplete-dashboard"
                                 options={pecasList}
@@ -327,6 +338,7 @@ export default function DashboardInjetora() {
                                 value={selectedPeca}
                                 onChange={handlePecaChange}
                                 isOptionEqualToValue={(option, value) => option.codigo_peca === value.codigo_peca}
+                                sx={{ minWidth: 150 }}
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
@@ -339,89 +351,117 @@ export default function DashboardInjetora() {
                                 )}
                                 noOptionsText="Nenhuma peça encontrada"
                             />
-                        </Grid>
-                        <Grid item xs={12} sm={2}>
-                            <FormControl fullWidth>
-                                <InputLabel id="tipo-injetora-select-label">Tipo Injetora</InputLabel>
-                                <Select
-                                    labelId="tipo-injetora-select-label"
-                                    value={selectedTipoInjetora}
-                                    label="Tipo Injetora"
-                                    onChange={handleTipoInjetoraChange}
-                                    disabled={loadingFilters}
-                                    displayEmpty
-                                    renderValue={(selected) => {
-                                        if (selected === 'todos') {
-                                            return <em>Todos</em>;
-                                        }
-                                        return selected;
+                        </Box>
+                        <Box display="flex" gap={2}>
+                            <Box >
+                                <DatePicker
+                                    label="Data Início"
+                                    sx={{ maxWidth: 150 }}
+                                    value={startDate}
+                                    onChange={(newValue) => setStartDate(newValue)}
+                                    renderInput={(params) => <TextField {...params} fullWidth />}
+                                    format="DD/MM/YYYY"
+                                />
+                            </Box>
+                            <Box >
+                                <DatePicker
+                                    label="Data Fim"
+                                    sx={{ maxWidth: 150 }}
+                                    value={endDate}
+                                    onChange={(newValue) => setEndDate(newValue)}
+                                    renderInput={(params) => <TextField {...params} fullWidth />}
+                                    format="DD/MM/YYYY"
+                                />
+                            </Box>
+                            <Divider orientation="vertical" flexItem />
+                            <Box >
+                                <FormControl>
+                                    <InputLabel id="tipo-injetora-select-label">Tipo Injetora</InputLabel>
+                                    <Select
+                                        sx={{ minWidth: 150 }}
+                                        labelId="tipo-injetora-select-label"
+                                        value={selectedTipoInjetora}
+                                        label="Tipo Injetora"
+                                        onChange={handleTipoInjetoraChange}
+                                        disabled={loadingFilters}
+                                        displayEmpty
+                                        renderValue={(selected) => {
+                                            if (selected === 'todos') {
+                                                return <em>Todos</em>;
+                                            }
+                                            return selected;
+                                        }}
+                                    >
+                                        <MenuItem value="todos"><em>Todos</em></MenuItem>
+                                        {maquinasList.map((tipo) => (
+                                            <MenuItem key={tipo} value={tipo}>
+                                                {tipo}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Box>
+                            <Box >
+                                <FormControl>
+                                    <InputLabel id="turno-select-label">Turno</InputLabel>
+                                    <Select
+                                        labelId="turno-select-label"
+                                        sx={{ minWidth: 150 }}
+                                        value={selectedTurno}
+                                        label="Turno"
+                                        onChange={handleTurnoChange}
+                                        disabled={loadingFilters}
+                                        displayEmpty
+                                        renderValue={(selected) => {
+                                            if (selected === 'todos') {
+                                                return <em>Todos</em>;
+                                            }
+                                            return selected;
+                                        }}
+                                    >
+                                        <MenuItem value="todos"><em>Todos</em></MenuItem>
+                                        {turnosList.map((turno) => (
+                                            <MenuItem key={turno} value={turno}>
+                                                {turno}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Box>
+                            <Divider orientation="vertical" flexItem />
+                            <Box xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <TextField  
+                                    sx={{ backgroundColor: '#f1f1f1', maxWidth: 200 }}
+                                    label="Meta de Produção Diária"
+                                    type="number"
+                                    fullWidth
+                                    value={editMetaMode ? newMetaValue : metaProducao}
+                                    onChange={handleNewMetaChange}
+                                    disabled={!editMetaMode || !canEditMeta}
+                                    InputProps={{
+                                        readOnly: !editMetaMode,
                                     }}
-                                >
-                                    <MenuItem value="todos"><em>Todos</em></MenuItem>
-                                    {maquinasList.map((tipo) => (
-                                        <MenuItem key={tipo} value={tipo}>
-                                            {tipo}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12} sm={2}>
-                            <FormControl fullWidth>
-                                <InputLabel id="turno-select-label">Turno</InputLabel>
-                                <Select
-                                    labelId="turno-select-label"
-                                    value={selectedTurno}
-                                    label="Turno"
-                                    onChange={handleTurnoChange}
-                                    disabled={loadingFilters}
-                                    displayEmpty
-                                    renderValue={(selected) => {
-                                        if (selected === 'todos') {
-                                            return <em>Todos</em>;
-                                        }
-                                        return selected;
-                                    }}
-                                >
-                                    <MenuItem value="todos"><em>Todos</em></MenuItem>
-                                    {turnosList.map((turno) => (
-                                        <MenuItem key={turno} value={turno}>
-                                            {turno}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <TextField
-                                label="Meta de Produção Diária"
-                                type="number"
-                                fullWidth
-                                value={editMetaMode ? newMetaValue : metaProducao}
-                                onChange={handleNewMetaChange}
-                                disabled={!editMetaMode || !canEditMeta}
-                                InputProps={{
-                                    readOnly: !editMetaMode,
-                                }}
-                            />
-                            {canEditMeta && (
-                                editMetaMode ? (
-                                    <>
-                                        <IconButton color="primary" onClick={handleSaveMeta} aria-label="Salvar Meta">
-                                            <SaveIcon />
+                                />
+                                {canEditMeta && (
+                                    editMetaMode ? (
+                                        <>
+                                            <IconButton color="primary" onClick={handleSaveMeta} aria-label="Salvar Meta">
+                                                <SaveIcon />
+                                            </IconButton>
+                                            <IconButton color="secondary" onClick={handleCancelEditMeta} aria-label="Cancelar Edição">
+                                                <CancelIcon />
+                                            </IconButton>
+                                        </>
+                                    ) : (
+                                        <IconButton color="default" onClick={() => setEditMetaMode(true)} aria-label="Editar Meta">
+                                            <EditIcon />
                                         </IconButton>
-                                        <IconButton color="secondary" onClick={handleCancelEditMeta} aria-label="Cancelar Edição">
-                                            <CancelIcon />
-                                        </IconButton>
-                                    </>
-                                ) : (
-                                    <IconButton color="default" onClick={() => setEditMetaMode(true)} aria-label="Editar Meta">
-                                        <EditIcon />
-                                    </IconButton>
-                                )
-                            )}
-                        </Grid>
-                    </Grid>
+                                    )
+                                )}
+                            </Box>
+                        </Box>
+                    </Box>
+
                     {loadingFilters && <Typography sx={{ mt: 2 }}>Carregando opções de filtro...</Typography>}
                     {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
                 </Paper>
